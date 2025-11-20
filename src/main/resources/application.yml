@@ -1,0 +1,68 @@
+server:
+  servlet:
+    context-path: /permission-service
+  port: 8086
+
+logging:
+  level:
+    root: WARN
+    org.budgetanalyzer: TRACE
+
+spring:
+  application:
+    name: permission-service
+
+  jackson:
+    default-property-inclusion: non_null  # Exclude null fields from JSON
+    serialization:
+      indent-output: true                 # Pretty print JSON
+      write-dates-as-timestamps: false    # Use ISO-8601 format for dates
+    date-format: com.fasterxml.jackson.databind.util.StdDateFormat
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/permission
+    username: budget_analyzer
+    password: budget_analyzer
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway manages schema, JPA validates it matches entities
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Auth0 issuer URI (abstracted through NGINX /auth/.well-known/openid-configuration)
+          # In production, this will point to NGINX gateway
+          # In development, can point directly to Auth0 or through NGINX
+          issuer-uri: ${AUTH0_ISSUER_URI:https://dev-gcz1r8453xzz0317.us.auth0.com/}
+          # JWT audience validation - ensures token was issued for our API
+          audiences:
+            - ${AUTH0_AUDIENCE:https://api.budgetanalyzer.org}
+
+budgetanalyzer:
+  service:
+    http-logging:
+      enabled: true
+      log-level: DEBUG
+      include-request-body: true
+      include-response-body: true
+      max-body-size: 10000
+      exclude-patterns:
+        - /**/actuator/**
+        - /**/swagger-ui/**
+        - /**/v3/api-docs/**
+        - /**/v3/api-docs.yaml
