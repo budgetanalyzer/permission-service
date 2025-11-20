@@ -1,4 +1,7 @@
 spring:
+  application:
+    name: permission-service-test
+
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
     username: sa
@@ -8,7 +11,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        format_sql: true
 
   flyway:
     enabled: false
@@ -23,3 +30,20 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://test-issuer.example.com/
+          audiences:
+            - https://test-api.example.com
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      indent-output: true
+      write-dates-as-timestamps: false
+
+server:
+  servlet:
+    context-path: /permission-service
+
+logging:
+  level:
+    root: WARN
+    org.budgetanalyzer: DEBUG
