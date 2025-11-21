@@ -35,6 +35,7 @@ CREATE TABLE roles (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     parent_role_id VARCHAR(50) REFERENCES roles(id),
+    is_system BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP(6) WITH TIME ZONE,
     created_by VARCHAR(50),
