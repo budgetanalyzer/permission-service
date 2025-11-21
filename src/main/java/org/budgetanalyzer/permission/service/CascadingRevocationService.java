@@ -85,7 +85,7 @@ public class CascadingRevocationService {
 
     // 3. Revoke all Delegation entries (as delegator or delegatee)
     delegationRepository
-        .findActiveByUserId(userId)
+        .findActiveByUserId(userId, now)
         .forEach(
             d -> {
               d.setRevokedAt(now);

@@ -122,8 +122,9 @@ public class DelegationService {
    * @return summary of delegations
    */
   public DelegationsSummary getDelegationsForUser(String userId) {
-    var given = delegationRepository.findByDelegatorIdAndRevokedAtIsNull(userId);
-    var received = delegationRepository.findActiveDelegationsForUser(userId, Instant.now());
+    var now = Instant.now();
+    var given = delegationRepository.findByDelegatorIdAndRevokedAtIsNull(userId, now);
+    var received = delegationRepository.findActiveDelegationsForUser(userId, now);
 
     return new DelegationsSummary(given, received);
   }

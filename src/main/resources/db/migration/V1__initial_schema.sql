@@ -199,7 +199,7 @@ CREATE TABLE delegations (
 CREATE INDEX idx_delegations_delegator ON delegations(delegator_id);
 CREATE INDEX idx_delegations_delegatee ON delegations(delegatee_id);
 CREATE INDEX idx_delegations_active ON delegations(delegatee_id)
-    WHERE revoked_at IS NULL AND (valid_until IS NULL OR valid_until > CURRENT_TIMESTAMP);
+    WHERE revoked_at IS NULL;
 
 COMMENT ON TABLE delegations IS 'User-to-user permission delegations';
 COMMENT ON COLUMN delegations.scope IS 'Delegation scope: full, read_only, transactions_only';
@@ -217,7 +217,7 @@ CREATE TABLE authorization_audit_log (
     resource_id VARCHAR(100),
     decision VARCHAR(20) NOT NULL,
     reason TEXT,
-    request_ip VARCHAR(45),
+    ip_address VARCHAR(45),
     user_agent TEXT,
     additional_context JSONB
 );

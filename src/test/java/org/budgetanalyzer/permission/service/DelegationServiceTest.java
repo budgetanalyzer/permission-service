@@ -191,7 +191,8 @@ class DelegationServiceTest {
       receivedDelegation.setDelegatorId(TestConstants.TEST_ADMIN_ID);
       receivedDelegation.setDelegateeId(TestConstants.TEST_USER_ID);
 
-      when(delegationRepository.findByDelegatorIdAndRevokedAtIsNull(TestConstants.TEST_USER_ID))
+      when(delegationRepository.findByDelegatorIdAndRevokedAtIsNull(
+              eq(TestConstants.TEST_USER_ID), any()))
           .thenReturn(List.of(givenDelegation));
       when(delegationRepository.findActiveDelegationsForUser(eq(TestConstants.TEST_USER_ID), any()))
           .thenReturn(List.of(receivedDelegation));

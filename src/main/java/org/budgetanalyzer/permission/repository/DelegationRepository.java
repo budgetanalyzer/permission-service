@@ -54,9 +54,17 @@ public interface DelegationRepository extends JpaRepository<Delegation, Long> {
    * Finds all active delegations created by a user.
    *
    * @param delegatorId the delegator user ID
-   * @return list of active (non-revoked) delegations created by the user
+   * @param now the current time for validity checking
+   * @return list of active delegations created by the user
    */
-  List<Delegation> findByDelegatorIdAndRevokedAtIsNull(String delegatorId);
+  @Query(
+      "SELECT d FROM Delegation d "
+          + "WHERE d.delegatorId = :delegatorId "
+          + "AND d.revokedAt IS NULL "
+          + "AND d.validFrom <= :now "
+          + "AND (d.validUntil IS NULL OR d.validUntil > :now)")
+  List<Delegation> findByDelegatorIdAndRevokedAtIsNull(
+      @Param("delegatorId") String delegatorId, @Param("now") Instant now);
 
   /**
    * Finds all active delegations involving a user (for cascading revocation when user is
@@ -65,11 +73,14 @@ public interface DelegationRepository extends JpaRepository<Delegation, Long> {
    * <p>This includes delegations where the user is either the delegator or the delegatee.
    *
    * @param userId the user ID
+   * @param now the current time for validity checking
    * @return list of active delegations involving the user
    */
   @Query(
       "SELECT d FROM Delegation d "
           + "WHERE (d.delegatorId = :userId OR d.delegateeId = :userId) "
-          + "AND d.revokedAt IS NULL")
-  List<Delegation> findActiveByUserId(@Param("userId") String userId);
+          + "AND d.revokedAt IS NULL "
+          + "AND d.validFrom <= :now "
+          + "AND (d.validUntil IS NULL OR d.validUntil > :now)")
+  List<Delegation> findActiveByUserId(@Param("userId") String userId, @Param("now") Instant now);
 }

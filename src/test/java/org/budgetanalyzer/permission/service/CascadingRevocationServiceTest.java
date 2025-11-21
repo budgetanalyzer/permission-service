@@ -2,6 +2,7 @@ package org.budgetanalyzer.permission.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,7 +73,7 @@ class CascadingRevocationServiceTest {
           .thenReturn(List.of(userRole1, userRole2));
       when(resourcePermissionRepository.findActiveByUserId(TestConstants.TEST_USER_ID))
           .thenReturn(List.of());
-      when(delegationRepository.findActiveByUserId(TestConstants.TEST_USER_ID))
+      when(delegationRepository.findActiveByUserId(eq(TestConstants.TEST_USER_ID), any()))
           .thenReturn(List.of());
 
       // Act
@@ -101,7 +102,7 @@ class CascadingRevocationServiceTest {
       when(userRoleRepository.findActiveByUserId(TestConstants.TEST_USER_ID)).thenReturn(List.of());
       when(resourcePermissionRepository.findActiveByUserId(TestConstants.TEST_USER_ID))
           .thenReturn(List.of(resourcePerm));
-      when(delegationRepository.findActiveByUserId(TestConstants.TEST_USER_ID))
+      when(delegationRepository.findActiveByUserId(eq(TestConstants.TEST_USER_ID), any()))
           .thenReturn(List.of());
 
       // Act
@@ -125,7 +126,7 @@ class CascadingRevocationServiceTest {
       when(userRoleRepository.findActiveByUserId(TestConstants.TEST_USER_ID)).thenReturn(List.of());
       when(resourcePermissionRepository.findActiveByUserId(TestConstants.TEST_USER_ID))
           .thenReturn(List.of());
-      when(delegationRepository.findActiveByUserId(TestConstants.TEST_USER_ID))
+      when(delegationRepository.findActiveByUserId(eq(TestConstants.TEST_USER_ID), any()))
           .thenReturn(List.of(delegation));
 
       // Act
