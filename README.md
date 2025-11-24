@@ -1,5 +1,9 @@
 # Permission Service
 
+[![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
+
+> **⚠️ Work in Progress**: This project is under active development. Features and documentation are subject to change.
+
 Authorization data management microservice for the Budget Analyzer application.
 
 ## Overview
