@@ -4,6 +4,14 @@ Authorization data management microservice for the Budget Analyzer application. 
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
 
+## Project Status
+
+This service is functionally complete for authorization data management. The unsolved problem is propagating user ownership to domain services (transaction-service, etc.) - that's the next architectural challenge, left as an exercise.
+
+**Current focus:** Bug fixes and documentation, not new features.
+
+See [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/system-overview.md#intentional-boundaries) for the intentional boundary.
+
 ## Repository Scope
 
 **Boundary**: This repository only.
@@ -234,3 +242,11 @@ ls src/test/java/org/budgetanalyzer/permission/
 **Code style:**
 - Google Java Format enforced via Spotless
 - Run `./gradlew spotlessApply` before committing
+
+### Web Search Year Awareness
+
+Claude's training data may default to an outdated year. When using WebSearch for best practices or current information:
+
+1. Check `<env>Today's date</env>` for the actual current year
+2. Include that year in searches (e.g., "Spring Boot best practices 2025" not 2024)
+3. This ensures results reflect current standards, not outdated patterns

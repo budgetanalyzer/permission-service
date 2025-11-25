@@ -2,9 +2,22 @@
 
 [![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
 
-> **⚠️ Work in Progress**: This project is under active development. Features and documentation are subject to change.
-
 Authorization data management microservice for the Budget Analyzer application.
+
+## Scope & Boundaries
+
+**What this service does:**
+- Manages authorization metadata: users, roles, permissions, delegations
+- Provides RBAC with hierarchical roles
+- Tracks temporal data for compliance (who had what permission when)
+- Maintains immutable audit logs
+
+**What this service does NOT solve:**
+- Data ownership: "Which transactions belong to which user?"
+- Cross-service user scoping
+- Multi-tenancy / organization isolation
+
+The schema includes `organization_id` for future multi-tenancy, but this is not implemented. Data ownership is intentionally left as an exercise - see [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/system-overview.md#intentional-boundaries) for why.
 
 ## Overview
 
