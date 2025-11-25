@@ -4,6 +4,19 @@ Authorization data management microservice for the Budget Analyzer application. 
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
 
+## Repository Scope
+
+**Boundary**: This repository only.
+
+**Allowed**:
+- Read `../service-common/` and `../orchestration/docs/`
+- All operations within this repository
+
+**Forbidden**:
+- Writing outside this repository
+
+Cross-service changes: coordinate through orchestration or service-common.
+
 ## Spring Boot Patterns
 
 This service uses shared patterns from service-common. When implementing new features:
