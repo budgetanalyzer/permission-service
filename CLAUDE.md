@@ -1,5 +1,29 @@
 # Permission Service
 
+## Tree Position
+
+**Archetype**: service
+**Scope**: budgetanalyzer ecosystem
+**Role**: Manages RBAC, resource permissions, delegations, and authorization audit logging
+
+### Relationships
+- **Consumes**: service-common (patterns)
+- **Coordinated by**: orchestration
+- **Peers with**: Discover via `ls /workspace/*-service`
+- **Observed by**: architecture-conversations
+
+### Permissions
+- **Read**: `../service-common/`, `../orchestration/docs/`
+- **Write**: This repository only
+
+### Discovery
+```bash
+# My peers
+ls -d /workspace/*-service
+# My platform
+ls ../service-common/
+```
+
 Authorization data management microservice for the Budget Analyzer application. Manages RBAC (Role-Based Access Control), resource-level permissions, user-to-user delegations, and authorization audit logging with full temporal tracking for compliance.
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
@@ -11,19 +35,6 @@ This service is functionally complete for authorization data management. The uns
 **Current focus:** Bug fixes and documentation, not new features.
 
 See [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/system-overview.md#intentional-boundaries) for the intentional boundary.
-
-## Repository Scope
-
-**Boundary**: This repository only.
-
-**Allowed**:
-- Read `../service-common/` and `../orchestration/docs/`
-- All operations within this repository
-
-**Forbidden**:
-- Writing outside this repository
-
-Cross-service changes: coordinate through orchestration or service-common.
 
 ## Spring Boot Patterns
 
@@ -250,3 +261,7 @@ Claude's training data may default to an outdated year. When using WebSearch for
 1. Check `<env>Today's date</env>` for the actual current year
 2. Include that year in searches (e.g., "Spring Boot best practices 2025" not 2024)
 3. This ensures results reflect current standards, not outdated patterns
+
+## Conversation Capture
+
+When the user asks to save this conversation, write it to `/workspace/architecture-conversations/conversations/` following the format in INDEX.md.
