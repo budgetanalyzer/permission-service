@@ -19,7 +19,7 @@ import org.budgetanalyzer.service.config.BaseOpenApiConfig;
             version = "1.0",
             description =
                 "API documentation for Permission Service - Authorization data management",
-            contact = @Contact(name = "Bleu Rubin", email = "budgetanalyzer@proton.me"),
+            contact = @Contact(name = "Bleu Rubin", email = "contact@budgetanalyzer.org"),
             license = @License(name = "MIT", url = "https://opensource.org/licenses/MIT")),
     servers = {
       @Server(url = "http://localhost:8080/api", description = "Local environment (via gateway)"),
