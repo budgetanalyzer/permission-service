@@ -1,5 +1,9 @@
 # Permission Service
 
+> "Archetype: service. Role: Manages RBAC, resource permissions, delegations, and authorization audit logging."
+>
+> — [CLAUDE.md](CLAUDE.md#tree-position)
+
 [![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
 
 Authorization data management microservice for the Budget Analyzer application.
