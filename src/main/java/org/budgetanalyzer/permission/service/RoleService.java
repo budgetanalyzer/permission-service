@@ -112,27 +112,6 @@ public class RoleService {
     roleRepository.save(role);
   }
 
-  /**
-   * Restores a soft-deleted role.
-   *
-   * @param id the role ID
-   * @throws IllegalStateException if the role is not currently deleted
-   */
-  @Transactional
-  public void restoreRole(String id) {
-    var role =
-        roleRepository
-            .findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + id));
-
-    if (!role.isDeleted()) {
-      throw new IllegalStateException("Role is not deleted");
-    }
-
-    role.restore();
-    roleRepository.save(role);
-  }
-
   private String generateRoleId() {
     return "role_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
   }

@@ -134,10 +134,7 @@ public class UserPermissionController {
   public void assignRole(
       @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id,
       @RequestBody @Valid UserRoleAssignmentRequest request) {
-    var assignedBy =
-        SecurityContextUtil.getCurrentUserId()
-            .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));
-    permissionService.assignRole(id, request.roleId(), assignedBy);
+    permissionService.assignRole(id, request.roleId());
   }
 
   @Operation(

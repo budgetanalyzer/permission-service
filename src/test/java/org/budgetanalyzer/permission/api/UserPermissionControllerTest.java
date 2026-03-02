@@ -1,7 +1,6 @@
 package org.budgetanalyzer.permission.api;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -199,7 +198,7 @@ class UserPermissionControllerTest {
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isNoContent());
 
-      verify(permissionService).assignRole(eq(TestConstants.TEST_USER_ID), eq("USER"), anyString());
+      verify(permissionService).assignRole(TestConstants.TEST_USER_ID, "USER");
     }
 
     @Test
@@ -212,7 +211,7 @@ class UserPermissionControllerTest {
 
       doThrow(new DuplicateRoleAssignmentException(TestConstants.TEST_USER_ID, "USER"))
           .when(permissionService)
-          .assignRole(any(), eq("USER"), any());
+          .assignRole(any(), eq("USER"));
 
       // Act & Assert
       mockMvc

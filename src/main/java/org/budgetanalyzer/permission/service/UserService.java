@@ -1,7 +1,5 @@
 package org.budgetanalyzer.permission.service;
 
-import java.util.List;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,15 +45,6 @@ public class UserService {
   }
 
   /**
-   * Returns all active (non-deleted) users.
-   *
-   * @return list of active users
-   */
-  public List<User> getAllUsers() {
-    return userRepository.findAllActive();
-  }
-
-  /**
    * Soft-deletes a user and removes all role assignments.
    *
    * @param id the user ID
@@ -68,27 +57,6 @@ public class UserService {
     userRoleRepository.deleteByUserId(id);
 
     user.markDeleted(deletedBy);
-    userRepository.save(user);
-  }
-
-  /**
-   * Restores a soft-deleted user.
-   *
-   * @param id the user ID
-   * @throws IllegalStateException if the user is not currently deleted
-   */
-  @Transactional
-  public void restoreUser(String id) {
-    var user =
-        userRepository
-            .findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
-
-    if (!user.isDeleted()) {
-      throw new IllegalStateException("User is not deleted");
-    }
-
-    user.restore();
     userRepository.save(user);
   }
 }

@@ -83,7 +83,8 @@ class InternalPermissionControllerTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
           .andExpect(jsonPath("$.roles").isArray())
-          .andExpect(jsonPath("$.roles[0]").value("USER"))
+          .andExpect(jsonPath("$.roles.length()").value(1))
+          .andExpect(jsonPath("$.roles", org.hamcrest.Matchers.hasItem("USER")))
           .andExpect(jsonPath("$.permissions").isArray());
     }
 

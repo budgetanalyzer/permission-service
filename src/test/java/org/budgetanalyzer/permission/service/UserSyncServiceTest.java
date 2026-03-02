@@ -48,7 +48,8 @@ class UserSyncServiceTest {
     @DisplayName("should create new user when not found")
     void shouldCreateNewUserWhenNotFound() {
       // Arrange
-      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB)).thenReturn(Optional.empty());
+      when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
+          .thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
       var defaultRole = new Role();
@@ -81,7 +82,7 @@ class UserSyncServiceTest {
       existingUser.setEmail("old@example.com");
       existingUser.setDisplayName("Old Name");
 
-      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB))
+      when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.of(existingUser));
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -100,34 +101,11 @@ class UserSyncServiceTest {
     }
 
     @Test
-    @DisplayName("should restore soft-deleted user on sync")
-    void shouldRestoreSoftDeletedUser() {
-      // Arrange
-      var deletedUser = new User();
-      deletedUser.setId(TestConstants.TEST_USER_ID);
-      deletedUser.setIdpSub(TestConstants.TEST_IDP_SUB);
-      deletedUser.markDeleted(TestConstants.TEST_ADMIN_ID);
-
-      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB))
-          .thenReturn(Optional.of(deletedUser));
-      when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-      // Act
-      var result =
-          userSyncService.syncUser(
-              TestConstants.TEST_IDP_SUB,
-              TestConstants.TEST_EMAIL,
-              TestConstants.TEST_DISPLAY_NAME);
-
-      // Assert
-      assertThat(result.isDeleted()).isFalse();
-    }
-
-    @Test
     @DisplayName("should not assign default role when role not configured")
     void shouldNotAssignDefaultRoleWhenNotConfigured() {
       // Arrange
-      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB)).thenReturn(Optional.empty());
+      when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
+          .thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
       when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.empty());
 
@@ -147,7 +125,8 @@ class UserSyncServiceTest {
     @DisplayName("should assign default role with correct userId and roleId")
     void shouldAssignDefaultRoleCorrectly() {
       // Arrange
-      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB)).thenReturn(Optional.empty());
+      when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
+          .thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
       var defaultRole = new Role();

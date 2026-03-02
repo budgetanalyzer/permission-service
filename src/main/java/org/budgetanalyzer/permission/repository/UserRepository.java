@@ -42,14 +42,4 @@ public interface UserRepository extends JpaRepository<User, String>, SoftDeleteO
    * @return the user if found and not deleted
    */
   Optional<User> findByEmailAndDeletedFalse(String email);
-
-  // Include deleted for admin/audit purposes
-
-  /**
-   * Finds a user by their identity provider subject identifier, including soft-deleted users.
-   *
-   * @param idpSub the identity provider subject identifier
-   * @return the user if found (may be deleted)
-   */
-  Optional<User> findByIdpSub(String idpSub);
 }

@@ -48,7 +48,7 @@ public class UserSyncService {
    * Syncs a user from identity provider data, creating or updating as needed.
    *
    * <p>On first login the user is created and assigned the default USER role. On subsequent logins,
-   * email and display name are updated. Soft-deleted users are restored.
+   * email and display name are updated.
    *
    * @param idpSub the identity provider subject identifier
    * @param email the user's email address
@@ -57,7 +57,7 @@ public class UserSyncService {
    */
   public User syncUser(String idpSub, String email, String displayName) {
     return userRepository
-        .findByIdpSub(idpSub)
+        .findByIdpSubAndDeletedFalse(idpSub)
         .map(user -> updateUser(user, email, displayName))
         .orElseGet(() -> createUser(idpSub, email, displayName));
   }
@@ -77,10 +77,6 @@ public class UserSyncService {
   }
 
   private User updateUser(User user, String email, String displayName) {
-    if (user.isDeleted()) {
-      user.restore();
-    }
-
     user.setEmail(email);
     user.setDisplayName(displayName);
     return userRepository.save(user);

@@ -76,10 +76,9 @@ public class PermissionService {
    *
    * @param userId the user ID to assign the role to
    * @param roleId the role ID to assign
-   * @param assignedBy the user ID performing the assignment
    */
   @Transactional
-  public void assignRole(String userId, String roleId, String assignedBy) {
+  public void assignRole(String userId, String roleId) {
     userRepository
         .findByIdAndDeletedFalse(userId)
         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));

@@ -105,7 +105,7 @@ class PermissionServiceTest {
           .thenReturn(Optional.empty());
 
       // Act
-      permissionService.assignRole(TestConstants.TEST_USER_ID, "USER", TestConstants.TEST_ADMIN_ID);
+      permissionService.assignRole(TestConstants.TEST_USER_ID, "USER");
 
       // Assert
       var captor = ArgumentCaptor.forClass(UserRole.class);
@@ -131,10 +131,7 @@ class PermissionServiceTest {
           .thenReturn(Optional.of(new UserRole()));
 
       // Act & Assert
-      assertThatThrownBy(
-              () ->
-                  permissionService.assignRole(
-                      TestConstants.TEST_USER_ID, "USER", TestConstants.TEST_ADMIN_ID))
+      assertThatThrownBy(() -> permissionService.assignRole(TestConstants.TEST_USER_ID, "USER"))
           .isInstanceOf(DuplicateRoleAssignmentException.class);
 
       verify(userRoleRepository, never()).save(any());
@@ -148,10 +145,7 @@ class PermissionServiceTest {
           .thenReturn(Optional.empty());
 
       // Act & Assert
-      assertThatThrownBy(
-              () ->
-                  permissionService.assignRole(
-                      TestConstants.TEST_USER_ID, "USER", TestConstants.TEST_ADMIN_ID))
+      assertThatThrownBy(() -> permissionService.assignRole(TestConstants.TEST_USER_ID, "USER"))
           .isInstanceOf(ResourceNotFoundException.class)
           .hasMessageContaining("User not found");
     }
@@ -169,9 +163,7 @@ class PermissionServiceTest {
 
       // Act & Assert
       assertThatThrownBy(
-              () ->
-                  permissionService.assignRole(
-                      TestConstants.TEST_USER_ID, "NONEXISTENT", TestConstants.TEST_ADMIN_ID))
+              () -> permissionService.assignRole(TestConstants.TEST_USER_ID, "NONEXISTENT"))
           .isInstanceOf(ResourceNotFoundException.class)
           .hasMessageContaining("Role not found");
     }
