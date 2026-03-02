@@ -27,7 +27,6 @@ import org.budgetanalyzer.permission.api.request.UserRoleAssignmentRequest;
 import org.budgetanalyzer.permission.api.response.RoleResponse;
 import org.budgetanalyzer.permission.api.response.UserPermissionsResponse;
 import org.budgetanalyzer.permission.service.PermissionService;
-import org.budgetanalyzer.permission.service.UserSyncService;
 import org.budgetanalyzer.service.api.ApiErrorResponse;
 import org.budgetanalyzer.service.security.SecurityContextUtil;
 
@@ -42,25 +41,14 @@ import org.budgetanalyzer.service.security.SecurityContextUtil;
 public class UserPermissionController {
 
   private final PermissionService permissionService;
-  private final UserSyncService userSyncService;
 
-  /**
-   * Constructs a new UserPermissionController.
-   *
-   * @param permissionService the permission service
-   * @param userSyncService the user sync service
-   */
-  public UserPermissionController(
-      PermissionService permissionService, UserSyncService userSyncService) {
+  public UserPermissionController(PermissionService permissionService) {
     this.permissionService = permissionService;
-    this.userSyncService = userSyncService;
   }
 
   @Operation(
       summary = "Get current user's permissions",
-      description =
-          "Returns all effective permissions for the authenticated user including "
-              + "role-based, resource-specific, and delegated permissions")
+      description = "Returns all effective permissions for the authenticated user")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -77,16 +65,12 @@ public class UserPermissionController {
     var userId =
         SecurityContextUtil.getCurrentUserId()
             .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));
-    var permissions = permissionService.getEffectivePermissions(userId);
-
-    return UserPermissionsResponse.from(permissions);
+    return UserPermissionsResponse.from(permissionService.getEffectivePermissions(userId));
   }
 
   @Operation(
       summary = "Get user's permissions",
-      description =
-          "Returns all effective permissions for a specified user. "
-              + "Requires users:read permission.")
+      description = "Returns all effective permissions for a specified user.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -105,16 +89,10 @@ public class UserPermissionController {
   @PreAuthorize("hasAuthority('users:read')")
   public UserPermissionsResponse getUserPermissions(
       @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id) {
-    var permissions = permissionService.getEffectivePermissions(id);
-
-    return UserPermissionsResponse.from(permissions);
+    return UserPermissionsResponse.from(permissionService.getEffectivePermissions(id));
   }
 
-  @Operation(
-      summary = "Get user's roles",
-      description =
-          "Returns all active roles assigned to a user. "
-              + "User can view their own roles or requires users:read permission.")
+  @Operation(summary = "Get user's roles", description = "Returns all roles assigned to a user.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -123,10 +101,6 @@ public class UserPermissionController {
     @ApiResponse(
         responseCode = "403",
         description = "Insufficient permissions",
-        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
-    @ApiResponse(
-        responseCode = "404",
-        description = "User not found",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
   })
   @GetMapping("/{id}/roles")
@@ -138,15 +112,12 @@ public class UserPermissionController {
 
   @Operation(
       summary = "Assign role to user",
-      description =
-          "Assigns a role to a user with governance checks. "
-              + "Basic roles require 'user-roles:assign-basic', "
-              + "elevated roles require 'user-roles:assign-elevated'.")
+      description = "Assigns a role to a user. Requires 'roles:write' permission.")
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Role assigned successfully"),
     @ApiResponse(
         responseCode = "403",
-        description = "Insufficient permissions for this role level",
+        description = "Insufficient permissions",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
     @ApiResponse(
         responseCode = "404",
@@ -154,47 +125,41 @@ public class UserPermissionController {
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
     @ApiResponse(
         responseCode = "422",
-        description = "User already has this role or protected role violation",
+        description = "User already has this role",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
   })
   @PostMapping("/{id}/roles")
-  @PreAuthorize(
-      "hasAuthority('user-roles:assign-basic') or hasAuthority('user-roles:assign-elevated')")
+  @PreAuthorize("hasAuthority('roles:write')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void assignRole(
       @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id,
       @RequestBody @Valid UserRoleAssignmentRequest request) {
-    // Service layer enforces role-level restrictions
-    var grantedBy =
+    var assignedBy =
         SecurityContextUtil.getCurrentUserId()
             .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));
-    permissionService.assignRole(id, request.roleId(), grantedBy);
+    permissionService.assignRole(id, request.roleId(), assignedBy);
   }
 
   @Operation(
       summary = "Revoke role from user",
-      description = "Revokes a role from a user. Requires 'user-roles:revoke' permission.")
+      description = "Revokes a role from a user. Requires 'roles:write' permission.")
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Role revoked successfully"),
     @ApiResponse(
         responseCode = "403",
-        description = "Insufficient permissions or protected role",
+        description = "Insufficient permissions",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
     @ApiResponse(
         responseCode = "404",
-        description = "Active role assignment not found",
+        description = "Role assignment not found",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
   })
   @DeleteMapping("/{id}/roles/{roleId}")
-  @PreAuthorize("hasAuthority('user-roles:revoke')")
+  @PreAuthorize("hasAuthority('roles:write')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void revokeRole(
       @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id,
-      @Parameter(description = "Role ID to revoke", example = "ACCOUNTANT") @PathVariable
-          String roleId) {
-    var revokedBy =
-        SecurityContextUtil.getCurrentUserId()
-            .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));
-    permissionService.revokeRole(id, roleId, revokedBy);
+      @Parameter(description = "Role ID to revoke", example = "USER") @PathVariable String roleId) {
+    permissionService.revokeRole(id, roleId);
   }
 }

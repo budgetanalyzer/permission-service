@@ -1,6 +1,5 @@
 package org.budgetanalyzer.permission.api;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -71,8 +70,8 @@ class RoleControllerTest {
       role1.setId("USER");
       role1.setName("User");
       var role2 = new Role();
-      role2.setId("MANAGER");
-      role2.setName("Manager");
+      role2.setId("ADMIN");
+      role2.setName("Administrator");
 
       when(roleService.getAllRoles()).thenReturn(List.of(role1, role2));
 
@@ -111,11 +110,11 @@ class RoleControllerTest {
     void shouldReturnRoleWhenFound() throws Exception {
       // Arrange
       var role = new Role();
-      role.setId("MANAGER");
-      role.setName("Manager");
-      role.setDescription("Manages team resources");
+      role.setId("ADMIN");
+      role.setName("Administrator");
+      role.setDescription("Full access to all resources");
 
-      when(roleService.getRole("MANAGER")).thenReturn(role);
+      when(roleService.getRole("ADMIN")).thenReturn(role);
 
       var jwt =
           createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_READ);
@@ -123,14 +122,14 @@ class RoleControllerTest {
       // Act & Assert
       mockMvc
           .perform(
-              get("/v1/roles/{id}", "MANAGER")
+              get("/v1/roles/{id}", "ADMIN")
                   .with(
                       jwt()
                           .jwt(jwt)
                           .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_READ))))
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$.id").value("MANAGER"))
-          .andExpect(jsonPath("$.name").value("Manager"));
+          .andExpect(jsonPath("$.id").value("ADMIN"))
+          .andExpect(jsonPath("$.name").value("Administrator"));
     }
 
     @Test
@@ -165,14 +164,14 @@ class RoleControllerTest {
     @SuppressWarnings("checkstyle:VariableDeclarationUsageDistance")
     void shouldCreateRoleSuccessfully() throws Exception {
       // Arrange
-      var request = new RoleRequest("Project Manager", "Manages project resources", null);
+      var request = new RoleRequest("Project Manager", "Manages project resources");
 
       var createdRole = new Role();
       createdRole.setId("role_abc123");
       createdRole.setName("Project Manager");
       createdRole.setDescription("Manages project resources");
 
-      when(roleService.createRole(anyString(), anyString(), any())).thenReturn(createdRole);
+      when(roleService.createRole(anyString(), anyString())).thenReturn(createdRole);
 
       var jwt =
           createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
@@ -192,14 +191,14 @@ class RoleControllerTest {
           .andExpect(jsonPath("$.id").value("role_abc123"))
           .andExpect(jsonPath("$.name").value("Project Manager"));
 
-      verify(roleService).createRole("Project Manager", "Manages project resources", null);
+      verify(roleService).createRole("Project Manager", "Manages project resources");
     }
 
     @Test
     @DisplayName("should return 400 when name is blank")
     void shouldReturnBadRequestWhenNameIsBlank() throws Exception {
       // Arrange
-      var request = new RoleRequest("", "description", null);
+      var request = new RoleRequest("", "description");
       var jwt =
           createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
@@ -222,7 +221,7 @@ class RoleControllerTest {
     @Test
     @DisplayName("should return 403 when user lacks roles:write permission")
     void shouldReturnForbiddenWhenLackingWritePermission() throws Exception {
-      var request = new RoleRequest("Test Role", "description", null);
+      var request = new RoleRequest("Test Role", "description");
       var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
 
       mockMvc
@@ -244,15 +243,14 @@ class RoleControllerTest {
     @SuppressWarnings("checkstyle:VariableDeclarationUsageDistance")
     void shouldUpdateRoleSuccessfully() throws Exception {
       // Arrange
-      var request = new RoleRequest("Updated Name", "Updated description", null);
+      var request = new RoleRequest("Updated Name", "Updated description");
 
       var updatedRole = new Role();
-      updatedRole.setId("MANAGER");
+      updatedRole.setId("ADMIN");
       updatedRole.setName("Updated Name");
       updatedRole.setDescription("Updated description");
 
-      when(roleService.updateRole(eq("MANAGER"), anyString(), anyString(), any()))
-          .thenReturn(updatedRole);
+      when(roleService.updateRole(eq("ADMIN"), anyString(), anyString())).thenReturn(updatedRole);
 
       var jwt =
           createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
@@ -260,7 +258,7 @@ class RoleControllerTest {
       // Act & Assert
       mockMvc
           .perform(
-              put("/v1/roles/{id}", "MANAGER")
+              put("/v1/roles/{id}", "ADMIN")
                   .with(
                       jwt()
                           .jwt(jwt)
@@ -275,9 +273,9 @@ class RoleControllerTest {
     @DisplayName("should return 404 when role not found")
     void shouldReturnNotFoundWhenUpdatingNonexistentRole() throws Exception {
       // Arrange
-      var request = new RoleRequest("Name", "description", null);
+      var request = new RoleRequest("Name", "description");
 
-      when(roleService.updateRole(eq("NONEXISTENT"), anyString(), anyString(), any()))
+      when(roleService.updateRole(eq("NONEXISTENT"), anyString(), anyString()))
           .thenThrow(new ResourceNotFoundException("Role not found"));
 
       var jwt =
@@ -311,7 +309,7 @@ class RoleControllerTest {
       // Act & Assert
       mockMvc
           .perform(
-              delete("/v1/roles/{id}", "MANAGER")
+              delete("/v1/roles/{id}", "ADMIN")
                   .with(
                       jwt()
                           .jwt(jwt)
@@ -319,7 +317,7 @@ class RoleControllerTest {
                               new SimpleGrantedAuthority(TestConstants.PERM_ROLES_DELETE))))
           .andExpect(status().isNoContent());
 
-      verify(roleService).deleteRole(eq("MANAGER"), anyString());
+      verify(roleService).deleteRole(eq("ADMIN"), anyString());
     }
 
     @Test
@@ -351,7 +349,7 @@ class RoleControllerTest {
       var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
 
       mockMvc
-          .perform(delete("/v1/roles/{id}", "MANAGER").with(jwt().jwt(jwt)))
+          .perform(delete("/v1/roles/{id}", "ADMIN").with(jwt().jwt(jwt)))
           .andExpect(status().isForbidden());
     }
   }

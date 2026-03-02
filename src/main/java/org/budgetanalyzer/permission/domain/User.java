@@ -10,8 +10,10 @@ import org.budgetanalyzer.core.domain.SoftDeletableEntity;
 /**
  * Represents a user in the permission system.
  *
- * <p>Users are linked to Auth0 via their auth0_sub identifier and can be assigned roles, granted
- * resource permissions, and participate in delegations.
+ * <p>Users are linked to an identity provider via their {@code idp_sub} identifier and can be
+ * assigned roles. The {@code idp_sub} field stores the OIDC {@code sub} claim from any compliant
+ * provider (e.g., {@code "auth0|abc123"}, {@code "google-oauth2|123"}), making the architecture
+ * provider-agnostic and avoiding identity provider lock-in.
  */
 @Entity
 @Table(name = "users")
@@ -21,8 +23,9 @@ public class User extends SoftDeletableEntity {
   @Column(name = "id", length = 50)
   private String id;
 
-  @Column(name = "auth0_sub", nullable = false, unique = true)
-  private String auth0Sub;
+  /** OIDC {@code sub} claim from the identity provider. Provider-agnostic. */
+  @Column(name = "idp_sub", nullable = false, unique = true)
+  private String idpSub;
 
   @Column(name = "email", nullable = false)
   private String email;
@@ -32,9 +35,9 @@ public class User extends SoftDeletableEntity {
 
   public User() {}
 
-  public User(String id, String auth0Sub, String email, String displayName) {
+  public User(String id, String idpSub, String email, String displayName) {
     this.id = id;
-    this.auth0Sub = auth0Sub;
+    this.idpSub = idpSub;
     this.email = email;
     this.displayName = displayName;
   }
@@ -47,12 +50,12 @@ public class User extends SoftDeletableEntity {
     this.id = id;
   }
 
-  public String getAuth0Sub() {
-    return auth0Sub;
+  public String getIdpSub() {
+    return idpSub;
   }
 
-  public void setAuth0Sub(String auth0Sub) {
-    this.auth0Sub = auth0Sub;
+  public void setIdpSub(String idpSub) {
+    this.idpSub = idpSub;
   }
 
   public String getEmail() {

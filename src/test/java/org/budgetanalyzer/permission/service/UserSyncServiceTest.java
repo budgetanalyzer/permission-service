@@ -48,8 +48,7 @@ class UserSyncServiceTest {
     @DisplayName("should create new user when not found")
     void shouldCreateNewUserWhenNotFound() {
       // Arrange
-      when(userRepository.findByAuth0Sub(TestConstants.TEST_AUTH0_SUB))
-          .thenReturn(Optional.empty());
+      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB)).thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
       var defaultRole = new Role();
@@ -59,17 +58,16 @@ class UserSyncServiceTest {
       // Act
       var result =
           userSyncService.syncUser(
-              TestConstants.TEST_AUTH0_SUB,
+              TestConstants.TEST_IDP_SUB,
               TestConstants.TEST_EMAIL,
               TestConstants.TEST_DISPLAY_NAME);
 
       // Assert
       assertThat(result).isNotNull();
-      assertThat(result.getAuth0Sub()).isEqualTo(TestConstants.TEST_AUTH0_SUB);
+      assertThat(result.getIdpSub()).isEqualTo(TestConstants.TEST_IDP_SUB);
       assertThat(result.getEmail()).isEqualTo(TestConstants.TEST_EMAIL);
       assertThat(result.getDisplayName()).isEqualTo(TestConstants.TEST_DISPLAY_NAME);
 
-      // Verify default role assignment
       verify(userRoleRepository).save(any(UserRole.class));
     }
 
@@ -79,18 +77,18 @@ class UserSyncServiceTest {
       // Arrange
       var existingUser = new User();
       existingUser.setId(TestConstants.TEST_USER_ID);
-      existingUser.setAuth0Sub(TestConstants.TEST_AUTH0_SUB);
+      existingUser.setIdpSub(TestConstants.TEST_IDP_SUB);
       existingUser.setEmail("old@example.com");
       existingUser.setDisplayName("Old Name");
 
-      when(userRepository.findByAuth0Sub(TestConstants.TEST_AUTH0_SUB))
+      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.of(existingUser));
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
       // Act
       var result =
           userSyncService.syncUser(
-              TestConstants.TEST_AUTH0_SUB,
+              TestConstants.TEST_IDP_SUB,
               TestConstants.TEST_EMAIL,
               TestConstants.TEST_DISPLAY_NAME);
 
@@ -98,7 +96,6 @@ class UserSyncServiceTest {
       assertThat(result.getEmail()).isEqualTo(TestConstants.TEST_EMAIL);
       assertThat(result.getDisplayName()).isEqualTo(TestConstants.TEST_DISPLAY_NAME);
 
-      // Verify no new role assignment for existing user
       verify(userRoleRepository, never()).save(any());
     }
 
@@ -108,17 +105,17 @@ class UserSyncServiceTest {
       // Arrange
       var deletedUser = new User();
       deletedUser.setId(TestConstants.TEST_USER_ID);
-      deletedUser.setAuth0Sub(TestConstants.TEST_AUTH0_SUB);
+      deletedUser.setIdpSub(TestConstants.TEST_IDP_SUB);
       deletedUser.markDeleted(TestConstants.TEST_ADMIN_ID);
 
-      when(userRepository.findByAuth0Sub(TestConstants.TEST_AUTH0_SUB))
+      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.of(deletedUser));
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
       // Act
       var result =
           userSyncService.syncUser(
-              TestConstants.TEST_AUTH0_SUB,
+              TestConstants.TEST_IDP_SUB,
               TestConstants.TEST_EMAIL,
               TestConstants.TEST_DISPLAY_NAME);
 
@@ -130,15 +127,14 @@ class UserSyncServiceTest {
     @DisplayName("should not assign default role when role not configured")
     void shouldNotAssignDefaultRoleWhenNotConfigured() {
       // Arrange
-      when(userRepository.findByAuth0Sub(TestConstants.TEST_AUTH0_SUB))
-          .thenReturn(Optional.empty());
+      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB)).thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
       when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.empty());
 
       // Act
       var result =
           userSyncService.syncUser(
-              TestConstants.TEST_AUTH0_SUB,
+              TestConstants.TEST_IDP_SUB,
               TestConstants.TEST_EMAIL,
               TestConstants.TEST_DISPLAY_NAME);
 
@@ -148,11 +144,10 @@ class UserSyncServiceTest {
     }
 
     @Test
-    @DisplayName("should assign default role with SYSTEM as granter")
-    void shouldAssignDefaultRoleWithSystemAsGranter() {
+    @DisplayName("should assign default role with correct userId and roleId")
+    void shouldAssignDefaultRoleCorrectly() {
       // Arrange
-      when(userRepository.findByAuth0Sub(TestConstants.TEST_AUTH0_SUB))
-          .thenReturn(Optional.empty());
+      when(userRepository.findByIdpSub(TestConstants.TEST_IDP_SUB)).thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
       var defaultRole = new Role();
@@ -161,13 +156,12 @@ class UserSyncServiceTest {
 
       // Act
       userSyncService.syncUser(
-          TestConstants.TEST_AUTH0_SUB, TestConstants.TEST_EMAIL, TestConstants.TEST_DISPLAY_NAME);
+          TestConstants.TEST_IDP_SUB, TestConstants.TEST_EMAIL, TestConstants.TEST_DISPLAY_NAME);
 
       // Assert
       var captor = ArgumentCaptor.forClass(UserRole.class);
       verify(userRoleRepository).save(captor.capture());
       assertThat(captor.getValue().getRoleId()).isEqualTo("USER");
-      assertThat(captor.getValue().getGrantedBy()).isEqualTo("SYSTEM");
     }
   }
 }

@@ -7,48 +7,55 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.budgetanalyzer.permission.domain.Role;
+import org.budgetanalyzer.permission.repository.RolePermissionRepository;
 import org.budgetanalyzer.permission.repository.RoleRepository;
+import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 
 /**
  * Service for role CRUD operations.
  *
- * <p>Handles role creation, updates, and soft deletion with cascading revocation.
+ * <p>Handles role creation, updates, and soft deletion.
  */
 @Service
 @Transactional(readOnly = true)
 public class RoleService {
 
   private final RoleRepository roleRepository;
-  private final CascadingRevocationService cascadingRevocationService;
+  private final UserRoleRepository userRoleRepository;
+  private final RolePermissionRepository rolePermissionRepository;
 
   /**
-   * Constructs a new RoleService.
+   * Constructs a RoleService with the required repositories.
    *
    * @param roleRepository the role repository
-   * @param cascadingRevocationService the cascading revocation service
+   * @param userRoleRepository the user-role join table repository
+   * @param rolePermissionRepository the role-permission join table repository
    */
   public RoleService(
-      RoleRepository roleRepository, CascadingRevocationService cascadingRevocationService) {
+      RoleRepository roleRepository,
+      UserRoleRepository userRoleRepository,
+      RolePermissionRepository rolePermissionRepository) {
     this.roleRepository = roleRepository;
-    this.cascadingRevocationService = cascadingRevocationService;
+    this.userRoleRepository = userRoleRepository;
+    this.rolePermissionRepository = rolePermissionRepository;
   }
 
   /**
-   * Gets all active roles.
+   * Returns all non-deleted roles.
    *
-   * @return list of all non-deleted roles
+   * @return list of active roles
    */
   public List<Role> getAllRoles() {
     return roleRepository.findAllByDeletedFalse();
   }
 
   /**
-   * Gets a role by ID.
+   * Returns a non-deleted role by ID.
    *
    * @param id the role ID
    * @return the role
-   * @throws ResourceNotFoundException if role not found
+   * @throws ResourceNotFoundException if the role does not exist
    */
   public Role getRole(String id) {
     return roleRepository
@@ -57,56 +64,50 @@ public class RoleService {
   }
 
   /**
-   * Creates a new role.
+   * Creates a new role with a generated ID.
    *
    * @param name the role name
    * @param description the role description
-   * @param parentRoleId optional parent role ID for inheritance
-   * @return the created role
+   * @return the persisted role
    */
   @Transactional
-  public Role createRole(String name, String description, String parentRoleId) {
+  public Role createRole(String name, String description) {
     var role = new Role();
     role.setId(generateRoleId());
     role.setName(name);
     role.setDescription(description);
-    role.setParentRoleId(parentRoleId);
     return roleRepository.save(role);
   }
 
   /**
-   * Updates an existing role.
+   * Updates the name and description of an existing role.
    *
    * @param id the role ID
    * @param name the new name
    * @param description the new description
-   * @param parentRoleId the new parent role ID
    * @return the updated role
    */
   @Transactional
-  public Role updateRole(String id, String name, String description, String parentRoleId) {
+  public Role updateRole(String id, String name, String description) {
     var role = getRole(id);
     role.setName(name);
     role.setDescription(description);
-    role.setParentRoleId(parentRoleId);
     return roleRepository.save(role);
   }
 
   /**
-   * Soft deletes a role and cascades revocation to all assignments.
+   * Soft-deletes a role and removes all user and permission associations.
    *
    * @param id the role ID
-   * @param deletedBy the user performing the deletion
+   * @param deletedBy the user ID performing the deletion
    */
   @Transactional
   public void deleteRole(String id, String deletedBy) {
-    // 1. Find role (must not already be deleted)
     var role = getRole(id);
 
-    // 2. Call cascading revocation
-    cascadingRevocationService.revokeAllForRole(id, deletedBy);
+    userRoleRepository.deleteByRoleId(id);
+    rolePermissionRepository.deleteByRoleId(id);
 
-    // 3. Soft delete the role
     role.markDeleted(deletedBy);
     roleRepository.save(role);
   }
@@ -114,9 +115,8 @@ public class RoleService {
   /**
    * Restores a soft-deleted role.
    *
-   * <p>Note: Does NOT restore revoked UserRole/RolePermission entries.
-   *
    * @param id the role ID
+   * @throws IllegalStateException if the role is not currently deleted
    */
   @Transactional
   public void restoreRole(String id) {

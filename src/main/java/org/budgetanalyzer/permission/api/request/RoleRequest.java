@@ -21,9 +21,4 @@ public record RoleRequest(
             maxLength = 500,
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         @Size(max = 500, message = "Description must be at most 500 characters")
-        String description,
-    @Schema(
-            description = "Parent role ID for hierarchy inheritance",
-            example = "MANAGER",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-        String parentRoleId) {}
+        String description) {}
