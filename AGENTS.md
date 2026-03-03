@@ -38,20 +38,21 @@ See [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/ma
 
 ## Spring Boot Patterns
 
-This service uses shared patterns from service-common. When implementing new features:
+**This service follows standard Budget Analyzer Spring Boot conventions.**
 
 **Quick reference:**
 - Extends `AuditableEntity` for audit fields (createdAt, updatedAt, createdBy, updatedBy)
 - Extends `SoftDeletableEntity` for soft delete (deleted, deletedAt, deletedBy)
 - Uses `GlobalExceptionHandler` for consistent error responses
 - Uses `SecurityExceptionHandler` for auth error responses
+- DTOs: `*Request`, `*Response` — NEVER `*Dto`/`*DTO`
+- Imports: Use `jakarta.persistence.*` — NEVER `org.hibernate.*`
 
 **When to consult service-common documentation:**
-- Adding new entities or modifying base entity behavior
-- Changing exception handling patterns
-- Understanding pagination or response envelope patterns
-
-See [../service-common/README.md](../service-common/README.md)
+- **Implementing new features** → Read [service-common/AGENTS.md](../service-common/AGENTS.md) for architecture patterns
+- **Handling errors** → Read [error-handling.md](../service-common/docs/error-handling.md) for exception hierarchy
+- **Writing tests** → Read [testing-patterns.md](../service-common/docs/testing-patterns.md) for JUnit 5 + TestContainers conventions
+- **Code quality issues** → Read [code-quality-standards.md](../service-common/docs/code-quality-standards.md) for Spotless, Checkstyle, var usage
 
 ## Service-Specific Patterns
 
