@@ -8,29 +8,15 @@ import org.budgetanalyzer.permission.domain.Role;
 
 /** Response DTO for role data. */
 public record RoleResponse(
-    @Schema(description = "Role identifier", example = "MANAGER") String id,
-    @Schema(description = "Human-readable role name", example = "Manager") String name,
-    @Schema(description = "Role description", example = "Team oversight and approvals")
+    @Schema(description = "Role identifier", example = "ADMIN") String id,
+    @Schema(description = "Human-readable role name", example = "Administrator") String name,
+    @Schema(description = "Role description", example = "Full access to all resources")
         String description,
-    @Schema(
-            description = "Parent role ID for hierarchy",
-            example = "ORG_ADMIN",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-        String parentRoleId,
     @Schema(description = "When the role was created", example = "2024-01-15T10:30:00Z")
         Instant createdAt) {
-  /**
-   * Creates a RoleResponse from a Role entity.
-   *
-   * @param role the role entity
-   * @return the response DTO
-   */
+
   public static RoleResponse from(Role role) {
     return new RoleResponse(
-        role.getId(),
-        role.getName(),
-        role.getDescription(),
-        role.getParentRoleId(),
-        role.getCreatedAt());
+        role.getId(), role.getName(), role.getDescription(), role.getCreatedAt());
   }
 }

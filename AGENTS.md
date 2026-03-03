@@ -4,7 +4,7 @@
 
 **Archetype**: service
 **Scope**: budgetanalyzer ecosystem
-**Role**: Manages RBAC, resource permissions, delegations, and authorization audit logging
+**Role**: Manages RBAC and authorization data (roles, permissions, user-role assignments)
 
 ### Relationships
 - **Consumes**: service-common (patterns)
@@ -24,13 +24,13 @@ ls -d /workspace/*-service
 ls ../service-common/
 ```
 
-Authorization data management microservice for the Budget Analyzer application. Manages RBAC (Role-Based Access Control), resource-level permissions, user-to-user delegations, and authorization audit logging with full temporal tracking for compliance.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway JWT minting.
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
 
 ## Project Status
 
-This service is functionally complete for authorization data management. The unsolved problem is propagating user ownership to domain services (transaction-service, etc.) - that's the next architectural challenge, left as an exercise.
+This service provides clean RBAC for the Budget Analyzer ecosystem. Phase 1 simplification is complete. Phase 2 will add API key auth for the internal endpoint when the session-gateway integrates.
 
 **Current focus:** Bug fixes and documentation, not new features.
 
@@ -38,93 +38,54 @@ See [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/ma
 
 ## Spring Boot Patterns
 
-This service uses shared patterns from service-common. When implementing new features:
+**This service follows standard Budget Analyzer Spring Boot conventions.**
 
 **Quick reference:**
 - Extends `AuditableEntity` for audit fields (createdAt, updatedAt, createdBy, updatedBy)
 - Extends `SoftDeletableEntity` for soft delete (deleted, deletedAt, deletedBy)
-- Uses `GlobalExceptionHandler` for consistent error responses
-- Uses `SecurityExceptionHandler` for auth error responses
+- Uses `ServletApiExceptionHandler` (from service-common) for consistent error responses including security exceptions
+- DTOs: `*Request`, `*Response` — NEVER `*Dto`/`*DTO`
+- Identifiers: `{prefix}_{full-uuid-hex}` — see service-common Vendor Independence
+- Imports: Use `jakarta.persistence.*` — NEVER `org.hibernate.*`
 
 **When to consult service-common documentation:**
-- Adding new entities or modifying base entity behavior
-- Changing exception handling patterns
-- Understanding pagination or response envelope patterns
-
-See [../service-common/README.md](../service-common/README.md)
+- **Implementing new features** → Read [service-common/AGENTS.md](../service-common/AGENTS.md) for architecture patterns
+- **Handling errors** → Read [error-handling.md](../service-common/docs/error-handling.md) for exception hierarchy
+- **Writing tests** → Read [testing-patterns.md](../service-common/docs/testing-patterns.md) for JUnit 5 + TestContainers conventions
+- **Code quality issues** → Read [code-quality-standards.md](../service-common/docs/code-quality-standards.md) for Spotless, Checkstyle, var usage
 
 ## Service-Specific Patterns
 
-### Role-Based Governance
+### Role Model
 
-Roles are tiered with assignment permission requirements:
+Two default roles seeded via migration:
 
-| Tier | Roles | Required Permission |
-|------|-------|---------------------|
-| Basic | USER, ACCOUNTANT, AUDITOR | `user-roles:assign-basic` |
-| Elevated | MANAGER, ORG_ADMIN | `user-roles:assign-elevated` |
-| Protected | SYSTEM_ADMIN | Database-only (API blocked) |
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| ADMIN | Full access | All 15 permissions |
+| USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write |
 
-Custom roles require `user-roles:assign-elevated` permission.
-
-```bash
-# Find governance logic
-grep -r "assign-basic\|assign-elevated\|SYSTEM_ADMIN" src/main/java --include="*.java"
-```
-
-### Temporal Data Pattern
-
-Assignment tables (UserRole, RolePermission, Delegation) use temporal fields for point-in-time queries:
-- `granted_at` - When assignment became active
-- `revoked_at` - When assignment was revoked (null if active)
-
-This enables compliance queries like "What permissions did user X have on date Y?"
-
-```bash
-# Find temporal queries
-grep -r "granted_at\|revoked_at\|pointInTime" src/main/java --include="*.java"
-```
-
-### Delegation System
-
-User-to-user permission delegation with scope control:
-
-| Scope | Description |
-|-------|-------------|
-| `full` | All permissions from delegator |
-| `read_only` | Only read/list permissions |
-| `transactions_only` | Only transaction resource access |
-
-```bash
-# Find delegation logic
-grep -r "DelegationScope\|delegat" src/main/java --include="*.java"
-```
-
-### Permission Caching
-
-Redis-based caching for performance:
-- 5-minute TTL for cached permissions
-- Pub/sub invalidation across instances
-- Event-driven cache clearing on role/permission changes
-
-See `PermissionCacheService` for implementation.
+Custom roles can be created via the API. Role assignment requires `roles:write` permission.
 
 ### Domain Model
 
-**Core entities:**
-- `User` - Local record linked to Auth0 via `auth0_sub`
-- `Role` - Hierarchical RBAC with parent_role support
+**Core entities (5 tables):**
+- `User` - Local record linked to identity provider via `idp_sub`
+- `Role` - Role definitions (soft-deletable)
 - `Permission` - Atomic permissions in `resource:action` format
-- `UserRole` - Temporal user-role assignments
-- `RolePermission` - Temporal role-permission mappings
-- `ResourcePermission` - Instance-level permissions
-- `Delegation` - User-to-user delegation with scope
-- `AuthorizationAuditLog` - Immutable audit trail
+- `UserRole` - Simple user-role join table
+- `RolePermission` - Simple role-permission join table
 
 ```bash
 # View domain model
 tree src/main/java/org/budgetanalyzer/permission/domain
 ```
+
+### Internal Permissions Endpoint
+
+`GET /internal/v1/users/{idpSub}/permissions` — Called by the session-gateway to:
+1. Sync user from identity provider data (creates on first login)
+2. Return `{ userId, roles, permissions }` for JWT minting
 
 ### Package Structure
 
@@ -135,7 +96,6 @@ org.budgetanalyzer.permission/
 │   └── response/          # Response DTOs
 ├── config/                # Configuration classes
 ├── domain/                # JPA entities
-├── event/                 # Domain events
 ├── repository/            # JPA repositories
 └── service/               # Business logic
     ├── dto/               # Service-layer DTOs
@@ -149,9 +109,7 @@ org.budgetanalyzer.permission/
 **Key endpoint groups:**
 - `/v1/users` - User permissions and role assignments
 - `/v1/roles` - Role CRUD operations
-- `/v1/delegations` - User-to-user delegations
-- `/v1/resource-permissions` - Instance-level permissions
-- `/v1/audit` - Authorization audit logs
+- `/internal/v1/users` - Internal endpoint for gateway integration
 
 **Via API Gateway:** http://localhost:8080/permission-service/...
 
@@ -164,9 +122,8 @@ grep -r "@GetMapping\|@PostMapping\|@PutMapping\|@DeleteMapping" src/main/java -
 
 **Prerequisites:**
 - PostgreSQL with `permission` database
-- Redis for permission caching
-- Auth0 configuration (issuer URI, audience)
-- Environment variables: `REDIS_HOST`, `REDIS_PORT`, `AUTH0_ISSUER_URI`, `AUTH0_AUDIENCE`
+- OIDC identity provider configuration (issuer URI, audience)
+- Environment variables: `AUTH0_ISSUER_URI`, `AUTH0_AUDIENCE` (named for current provider; architecture is provider-agnostic)
 
 ```bash
 ./gradlew bootRun
@@ -192,9 +149,6 @@ grep -r "@PreAuthorize" src/main/java --include="*.java"
 
 # Find custom exceptions
 ls src/main/java/org/budgetanalyzer/permission/service/exception/
-
-# Find event handlers
-grep -r "@EventListener\|ApplicationEvent" src/main/java --include="*.java"
 ```
 
 ## Build and Test
@@ -233,22 +187,11 @@ ls src/test/java/org/budgetanalyzer/permission/
 **Security requirements:**
 - All controller methods MUST have `@PreAuthorize` annotations
 - Use `SecurityContextUtil` to get current user
-- Never expose SYSTEM_ADMIN assignment via API
 
-**Role governance rules:**
-- Check required permission tier before role assignment
-- Throw `ProtectedRoleException` for SYSTEM_ADMIN operations
+**Role assignment:**
+- Validate user and role exist before assignment
 - Throw `DuplicateRoleAssignmentException` if role already assigned
-
-**Temporal compliance:**
-- Always populate `granted_at` on new assignments
-- Set `revoked_at` instead of deleting for audit trail
-- Support point-in-time queries for compliance
-
-**Cache invalidation:**
-- Invalidate cache on role assignment/revocation
-- Invalidate cache on delegation create/revoke
-- Use `PermissionCacheService.invalidateUserPermissions()`
+- Hard delete on revocation (no temporal tracking)
 
 **Code style:**
 - Google Java Format enforced via Spotless

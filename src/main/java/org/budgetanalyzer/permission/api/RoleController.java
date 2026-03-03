@@ -32,11 +32,7 @@ import org.budgetanalyzer.permission.service.RoleService;
 import org.budgetanalyzer.service.api.ApiErrorResponse;
 import org.budgetanalyzer.service.security.SecurityContextUtil;
 
-/**
- * Controller for role management.
- *
- * <p>Provides CRUD operations for authorization roles.
- */
+/** Controller for role management. */
 @Tag(name = "Roles", description = "Role management - CRUD operations for authorization roles")
 @RestController
 @RequestMapping("/v1/roles")
@@ -44,18 +40,11 @@ public class RoleController {
 
   private final RoleService roleService;
 
-  /**
-   * Constructs a new RoleController.
-   *
-   * @param roleService the role service
-   */
   public RoleController(RoleService roleService) {
     this.roleService = roleService;
   }
 
-  @Operation(
-      summary = "List all roles",
-      description = "Returns all active (non-deleted) roles. Requires 'roles:read' permission.")
+  @Operation(summary = "List all roles", description = "Returns all active (non-deleted) roles.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -72,9 +61,7 @@ public class RoleController {
     return roleService.getAllRoles().stream().map(RoleResponse::from).toList();
   }
 
-  @Operation(
-      summary = "Get role by ID",
-      description = "Returns a specific role by ID. Requires 'roles:read' permission.")
+  @Operation(summary = "Get role by ID", description = "Returns a specific role by ID.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -92,13 +79,11 @@ public class RoleController {
   @GetMapping("/{id}")
   @PreAuthorize("hasAuthority('roles:read')")
   public RoleResponse getRole(
-      @Parameter(description = "Role ID", example = "MANAGER") @PathVariable String id) {
+      @Parameter(description = "Role ID", example = "ADMIN") @PathVariable String id) {
     return RoleResponse.from(roleService.getRole(id));
   }
 
-  @Operation(
-      summary = "Create new role",
-      description = "Creates a new role. Requires 'roles:write' permission (SYSTEM_ADMIN only).")
+  @Operation(summary = "Create new role", description = "Creates a new role.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "201",
@@ -116,8 +101,7 @@ public class RoleController {
   @PostMapping
   @PreAuthorize("hasAuthority('roles:write')")
   public ResponseEntity<RoleResponse> createRole(@RequestBody @Valid RoleRequest request) {
-    var created =
-        roleService.createRole(request.name(), request.description(), request.parentRoleId());
+    var created = roleService.createRole(request.name(), request.description());
 
     var location =
         ServletUriComponentsBuilder.fromCurrentRequest()
@@ -128,10 +112,7 @@ public class RoleController {
     return ResponseEntity.created(location).body(RoleResponse.from(created));
   }
 
-  @Operation(
-      summary = "Update role",
-      description =
-          "Updates an existing role. Requires 'roles:write' permission (SYSTEM_ADMIN only).")
+  @Operation(summary = "Update role", description = "Updates an existing role.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -153,17 +134,14 @@ public class RoleController {
   @PutMapping("/{id}")
   @PreAuthorize("hasAuthority('roles:write')")
   public RoleResponse updateRole(
-      @Parameter(description = "Role ID", example = "MANAGER") @PathVariable String id,
+      @Parameter(description = "Role ID", example = "ADMIN") @PathVariable String id,
       @RequestBody @Valid RoleRequest request) {
-    return RoleResponse.from(
-        roleService.updateRole(id, request.name(), request.description(), request.parentRoleId()));
+    return RoleResponse.from(roleService.updateRole(id, request.name(), request.description()));
   }
 
   @Operation(
       summary = "Delete role",
-      description =
-          "Soft-deletes a role and cascades revocation to all assignments. "
-              + "Requires 'roles:delete' permission (SYSTEM_ADMIN only).")
+      description = "Soft-deletes a role and removes all assignments.")
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Role deleted successfully"),
     @ApiResponse(
@@ -179,7 +157,7 @@ public class RoleController {
   @PreAuthorize("hasAuthority('roles:delete')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void deleteRole(
-      @Parameter(description = "Role ID", example = "MANAGER") @PathVariable String id) {
+      @Parameter(description = "Role ID", example = "ADMIN") @PathVariable String id) {
     var deletedBy =
         SecurityContextUtil.getCurrentUserId()
             .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));

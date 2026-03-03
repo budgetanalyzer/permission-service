@@ -1,7 +1,6 @@
 package org.budgetanalyzer.permission.api;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -35,10 +34,8 @@ import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.api.request.UserRoleAssignmentRequest;
 import org.budgetanalyzer.permission.domain.Role;
 import org.budgetanalyzer.permission.service.PermissionService;
-import org.budgetanalyzer.permission.service.UserSyncService;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
 import org.budgetanalyzer.permission.service.exception.DuplicateRoleAssignmentException;
-import org.budgetanalyzer.permission.service.exception.ProtectedRoleException;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.security.test.TestSecurityConfig;
 import org.budgetanalyzer.service.servlet.api.ServletApiExceptionHandler;
@@ -53,7 +50,6 @@ class UserPermissionControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @MockitoBean private PermissionService permissionService;
-  @MockitoBean private UserSyncService userSyncService;
 
   private Jwt createJwtWithPermissions(String userId, String... permissions) {
     return Jwt.withTokenValue("test-token")
@@ -73,7 +69,7 @@ class UserPermissionControllerTest {
       // Arrange
       var permissions =
           new EffectivePermissions(
-              Set.of("transactions:read", "transactions:write"), List.of(), List.of());
+              Set.of("USER"), Set.of("transactions:read", "transactions:write"));
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(permissions);
 
@@ -101,7 +97,7 @@ class UserPermissionControllerTest {
     @DisplayName("should return permissions when user has users:read permission")
     void shouldReturnPermissionsWithUsersReadPermission() throws Exception {
       // Arrange
-      var permissions = new EffectivePermissions(Set.of("transactions:read"), List.of(), List.of());
+      var permissions = new EffectivePermissions(Set.of("USER"), Set.of("transactions:read"));
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(permissions);
 
@@ -183,12 +179,12 @@ class UserPermissionControllerTest {
   class AssignRoleTests {
 
     @Test
-    @DisplayName("should assign role successfully with assign-basic permission")
-    void shouldAssignRoleSuccessfullyWithBasicPermission() throws Exception {
+    @DisplayName("should assign role successfully with roles:write permission")
+    void shouldAssignRoleSuccessfully() throws Exception {
       // Arrange
-      var request = new UserRoleAssignmentRequest("ACCOUNTANT", null, null);
+      var request = new UserRoleAssignmentRequest("USER");
       var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ASSIGN_BASIC);
+          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       // Act & Assert
       mockMvc
@@ -197,53 +193,25 @@ class UserPermissionControllerTest {
                   .with(
                       jwt()
                           .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ASSIGN_BASIC)))
+                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE)))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isNoContent());
 
-      verify(permissionService)
-          .assignRole(eq(TestConstants.TEST_USER_ID), eq("ACCOUNTANT"), anyString());
-    }
-
-    @Test
-    @DisplayName("should return 403 when trying to assign SYSTEM_ADMIN")
-    void shouldReturnForbiddenWhenAssigningSystemAdmin() throws Exception {
-      // Arrange
-      var request = new UserRoleAssignmentRequest("SYSTEM_ADMIN", null, null);
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ASSIGN_ELEVATED);
-
-      doThrow(new ProtectedRoleException("SYSTEM_ADMIN role cannot be assigned via API"))
-          .when(permissionService)
-          .assignRole(any(), eq("SYSTEM_ADMIN"), any());
-
-      // Act & Assert
-      mockMvc
-          .perform(
-              post("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
-                  .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(
-                              new SimpleGrantedAuthority(TestConstants.PERM_ASSIGN_ELEVATED)))
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request)))
-          .andExpect(status().isForbidden())
-          .andExpect(jsonPath("$.type").value("PERMISSION_DENIED"));
+      verify(permissionService).assignRole(TestConstants.TEST_USER_ID, "USER");
     }
 
     @Test
     @DisplayName("should return 422 when role already assigned")
     void shouldReturnUnprocessableEntityWhenRoleAlreadyAssigned() throws Exception {
       // Arrange
-      var request = new UserRoleAssignmentRequest("USER", null, null);
+      var request = new UserRoleAssignmentRequest("USER");
       var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ASSIGN_BASIC);
+          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       doThrow(new DuplicateRoleAssignmentException(TestConstants.TEST_USER_ID, "USER"))
           .when(permissionService)
-          .assignRole(any(), eq("USER"), any());
+          .assignRole(any(), eq("USER"));
 
       // Act & Assert
       mockMvc
@@ -252,7 +220,7 @@ class UserPermissionControllerTest {
                   .with(
                       jwt()
                           .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ASSIGN_BASIC)))
+                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE)))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isUnprocessableEntity());
@@ -262,9 +230,9 @@ class UserPermissionControllerTest {
     @DisplayName("should return 400 when roleId is blank")
     void shouldReturnBadRequestWhenRoleIdIsBlank() throws Exception {
       // Arrange
-      var request = new UserRoleAssignmentRequest("", null, null);
+      var request = new UserRoleAssignmentRequest("");
       var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ASSIGN_BASIC);
+          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       // Act & Assert
       mockMvc
@@ -273,7 +241,7 @@ class UserPermissionControllerTest {
                   .with(
                       jwt()
                           .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ASSIGN_BASIC)))
+                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE)))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isBadRequest())
@@ -283,7 +251,7 @@ class UserPermissionControllerTest {
     @Test
     @DisplayName("should return 403 when user lacks permission")
     void shouldReturnForbiddenWhenUserLacksPermission() throws Exception {
-      var request = new UserRoleAssignmentRequest("ACCOUNTANT", null, null);
+      var request = new UserRoleAssignmentRequest("USER");
       var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
 
       mockMvc
@@ -301,55 +269,33 @@ class UserPermissionControllerTest {
   class RevokeRoleTests {
 
     @Test
-    @DisplayName("should revoke role successfully with revoke permission")
-    void shouldRevokeRoleSuccessfullyWithPermission() throws Exception {
+    @DisplayName("should revoke role successfully with roles:write permission")
+    void shouldRevokeRoleSuccessfully() throws Exception {
       // Arrange
-      var jwt = createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_REVOKE);
+      var jwt =
+          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       // Act & Assert
       mockMvc
           .perform(
-              delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "ACCOUNTANT")
+              delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "USER")
                   .with(
                       jwt()
                           .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_REVOKE))))
+                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE))))
           .andExpect(status().isNoContent());
 
-      verify(permissionService)
-          .revokeRole(eq(TestConstants.TEST_USER_ID), eq("ACCOUNTANT"), anyString());
+      verify(permissionService).revokeRole(TestConstants.TEST_USER_ID, "USER");
     }
 
     @Test
-    @DisplayName("should return 403 when trying to revoke SYSTEM_ADMIN")
-    void shouldReturnForbiddenWhenRevokingSystemAdmin() throws Exception {
-      // Arrange
-      var jwt = createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_REVOKE);
-
-      doThrow(new ProtectedRoleException("SYSTEM_ADMIN role cannot be revoked via API"))
-          .when(permissionService)
-          .revokeRole(any(), eq("SYSTEM_ADMIN"), any());
-
-      // Act & Assert
-      mockMvc
-          .perform(
-              delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "SYSTEM_ADMIN")
-                  .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_REVOKE))))
-          .andExpect(status().isForbidden())
-          .andExpect(jsonPath("$.type").value("PERMISSION_DENIED"));
-    }
-
-    @Test
-    @DisplayName("should return 403 when user lacks revoke permission")
-    void shouldReturnForbiddenWhenUserLacksRevokePermission() throws Exception {
+    @DisplayName("should return 403 when user lacks roles:write permission")
+    void shouldReturnForbiddenWhenUserLacksPermission() throws Exception {
       var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
 
       mockMvc
           .perform(
-              delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "ACCOUNTANT")
+              delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "USER")
                   .with(jwt().jwt(jwt)))
           .andExpect(status().isForbidden());
     }
@@ -358,11 +304,12 @@ class UserPermissionControllerTest {
     @DisplayName("should return 404 when role assignment not found")
     void shouldReturnNotFoundWhenAssignmentNotFound() throws Exception {
       // Arrange
-      var jwt = createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_REVOKE);
+      var jwt =
+          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
-      doThrow(new ResourceNotFoundException("Active role assignment not found"))
+      doThrow(new ResourceNotFoundException("Role assignment not found"))
           .when(permissionService)
-          .revokeRole(any(), eq("NONEXISTENT"), any());
+          .revokeRole(any(), eq("NONEXISTENT"));
 
       // Act & Assert
       mockMvc
@@ -371,7 +318,7 @@ class UserPermissionControllerTest {
                   .with(
                       jwt()
                           .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_REVOKE))))
+                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE))))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.type").value("NOT_FOUND"));
     }

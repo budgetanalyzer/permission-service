@@ -7,12 +7,7 @@ import jakarta.persistence.Table;
 
 import org.budgetanalyzer.core.domain.SoftDeletableEntity;
 
-/**
- * Represents a role that can be assigned to users.
- *
- * <p>Roles support hierarchical inheritance through the parent_role_id field. A role inherits all
- * permissions from its parent role(s) in addition to its own.
- */
+/** Represents a role that can be assigned to users. */
 @Entity
 @Table(name = "roles")
 public class Role extends SoftDeletableEntity {
@@ -27,19 +22,15 @@ public class Role extends SoftDeletableEntity {
   @Column(name = "description")
   private String description;
 
-  @Column(name = "parent_role_id", length = 50)
-  private String parentRoleId;
-
   @Column(name = "is_system", nullable = false)
   private boolean system = false;
 
   public Role() {}
 
-  public Role(String id, String name, String description, String parentRoleId) {
+  public Role(String id, String name, String description) {
     this.id = id;
     this.name = name;
     this.description = description;
-    this.parentRoleId = parentRoleId;
   }
 
   public String getId() {
@@ -64,14 +55,6 @@ public class Role extends SoftDeletableEntity {
 
   public void setDescription(String description) {
     this.description = description;
-  }
-
-  public String getParentRoleId() {
-    return parentRoleId;
-  }
-
-  public void setParentRoleId(String parentRoleId) {
-    this.parentRoleId = parentRoleId;
   }
 
   public boolean isSystem() {
