@@ -188,6 +188,9 @@ ls src/test/java/org/budgetanalyzer/permission/
 - All controller methods MUST have `@PreAuthorize` annotations
 - Use `SecurityContextUtil` to get current user
 
+**Adding new permissions:**
+- When adding new permissions via migration, also update `JwtTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/JwtTestBuilder.java` — add the new permission strings to the `admin()` factory method so integration tests across all services reflect the correct ADMIN JWT shape.
+
 **Role assignment:**
 - Validate user and role exist before assignment
 - Throw `DuplicateRoleAssignmentException` if role already assigned
