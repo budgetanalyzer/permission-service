@@ -62,8 +62,8 @@ Two default roles seeded via migration:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | All 15 permissions |
-| USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write |
+| ADMIN | Full access | All 19 permissions |
+| USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write, statementformats:read |
 
 Custom roles can be created via the API. Role assignment requires `roles:write` permission.
 
