@@ -113,6 +113,6 @@ public class RoleService {
   }
 
   private String generateRoleId() {
-    return "role_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    return "role_" + UUID.randomUUID().toString().replace("-", "");
   }
 }

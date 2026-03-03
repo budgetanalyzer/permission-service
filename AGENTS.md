@@ -43,9 +43,9 @@ See [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/ma
 **Quick reference:**
 - Extends `AuditableEntity` for audit fields (createdAt, updatedAt, createdBy, updatedBy)
 - Extends `SoftDeletableEntity` for soft delete (deleted, deletedAt, deletedBy)
-- Uses `GlobalExceptionHandler` for consistent error responses
-- Uses `SecurityExceptionHandler` for auth error responses
+- Uses `ServletApiExceptionHandler` (from service-common) for consistent error responses including security exceptions
 - DTOs: `*Request`, `*Response` — NEVER `*Dto`/`*DTO`
+- Identifiers: `{prefix}_{full-uuid-hex}` — see service-common Vendor Independence
 - Imports: Use `jakarta.persistence.*` — NEVER `org.hibernate.*`
 
 **When to consult service-common documentation:**

@@ -95,6 +95,6 @@ public class UserSyncService {
   }
 
   private String generateUserId() {
-    return "usr_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    return "usr_" + UUID.randomUUID().toString().replace("-", "");
   }
 }
