@@ -182,7 +182,7 @@ ls src/test/java/org/budgetanalyzer/permission/
 ./gradlew test --tests "PermissionServiceTest"
 ```
 
-## Notes for Claude Code
+## NOTES FOR AI AGENTS
 
 **Security requirements:**
 - All controller methods MUST have `@PreAuthorize` annotations
