@@ -23,7 +23,8 @@ INSERT INTO role_permissions (role_id, permission_id, created_at, created_by) VA
     ('ADMIN', 'currencies:write', CURRENT_TIMESTAMP, 'SYSTEM');
 
 -- =============================================================================
--- USER gets statementformats:read (preserves current read access to statement formats)
+-- USER gets statementformats:read and currencies:read
 -- =============================================================================
 INSERT INTO role_permissions (role_id, permission_id, created_at, created_by) VALUES
-    ('USER', 'statementformats:read', CURRENT_TIMESTAMP, 'SYSTEM');
+    ('USER', 'statementformats:read', CURRENT_TIMESTAMP, 'SYSTEM'),
+    ('USER', 'currencies:read', CURRENT_TIMESTAMP, 'SYSTEM');
