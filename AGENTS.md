@@ -36,6 +36,10 @@ This service provides clean RBAC for the Budget Analyzer ecosystem. Phase 1 simp
 
 See [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/system-overview.md#intentional-boundaries) for the intentional boundary.
 
+## Coding Standards
+
+**Before writing or modifying any Java code, read [code-quality-standards.md](../service-common/docs/code-quality-standards.md).** Do not skip this step. The most common violations: missing `var`, wildcard imports, abbreviated variable names, Javadoc without trailing periods.
+
 ## Spring Boot Patterns
 
 **This service follows standard Budget Analyzer Spring Boot conventions.**
