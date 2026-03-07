@@ -24,6 +24,10 @@ ls -d /workspace/*-service
 ls ../service-common/
 ```
 
+## Code Exploration
+
+NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read directly.
+
 Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway JWT minting.
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
