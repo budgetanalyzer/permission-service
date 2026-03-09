@@ -1,12 +1,10 @@
 package org.budgetanalyzer.permission.api;
 
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,8 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,12 +21,12 @@ import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.service.PermissionService;
 import org.budgetanalyzer.permission.service.UserSyncService;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
-import org.budgetanalyzer.service.security.test.TestSecurityConfig;
+import org.budgetanalyzer.service.security.ClaimsHeaderSecurityConfig;
+import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 import org.budgetanalyzer.service.servlet.api.ServletApiExceptionHandler;
 
 @WebMvcTest(InternalPermissionController.class)
-@Import({TestSecurityConfig.class, ServletApiExceptionHandler.class})
-@EnableMethodSecurity
+@Import({ClaimsHeaderSecurityConfig.class, ServletApiExceptionHandler.class})
 @DisplayName("InternalPermissionController")
 class InternalPermissionControllerTest {
 
@@ -38,14 +34,6 @@ class InternalPermissionControllerTest {
 
   @MockitoBean private UserSyncService userSyncService;
   @MockitoBean private PermissionService permissionService;
-
-  private Jwt createJwt(String userId) {
-    return Jwt.withTokenValue("test-token")
-        .header("alg", "RS256")
-        .claim("sub", userId)
-        .claim("permissions", List.of())
-        .build();
-  }
 
   @Nested
   @DisplayName("GET /internal/v1/users/{idpSub}/permissions")
@@ -71,15 +59,13 @@ class InternalPermissionControllerTest {
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(effective);
 
-      var jwt = createJwt(TestConstants.TEST_USER_ID);
-
       // Act & Assert
       mockMvc
           .perform(
               get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
                   .param("email", TestConstants.TEST_EMAIL)
                   .param("displayName", TestConstants.TEST_DISPLAY_NAME)
-                  .with(jwt().jwt(jwt)))
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
           .andExpect(jsonPath("$.roles").isArray())
@@ -109,15 +95,13 @@ class InternalPermissionControllerTest {
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(effective);
 
-      var jwt = createJwt(TestConstants.TEST_USER_ID);
-
       // Act & Assert
       mockMvc
           .perform(
               get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
                   .param("email", TestConstants.TEST_EMAIL)
                   .param("displayName", TestConstants.TEST_DISPLAY_NAME)
-                  .with(jwt().jwt(jwt)))
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
           .andExpect(jsonPath("$.roles.length()").value(2))

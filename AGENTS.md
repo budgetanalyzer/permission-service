@@ -28,13 +28,13 @@ ls ../service-common/
 
 NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read directly.
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway JWT minting.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway claims resolution.
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
 
 ## Project Status
 
-This service provides clean RBAC for the Budget Analyzer ecosystem. Phase 1 simplification is complete. Phase 2 will add API key auth for the internal endpoint when the session-gateway integrates.
+This service provides clean RBAC for the Budget Analyzer ecosystem. Session-gateway integration is complete — the gateway calls the internal endpoint during ext_authz to resolve user claims (permissions, roles) which are injected as headers into upstream requests.
 
 **Current focus:** Bug fixes and documentation, not new features.
 
@@ -93,7 +93,7 @@ tree src/main/java/org/budgetanalyzer/permission/domain
 
 `GET /internal/v1/users/{idpSub}/permissions` — Called by the session-gateway to:
 1. Sync user from identity provider data (creates on first login)
-2. Return `{ userId, roles, permissions }` for JWT minting
+2. Return `{ userId, roles, permissions }` for claims injection
 
 ### Package Structure
 
@@ -130,8 +130,6 @@ grep -r "@GetMapping\|@PostMapping\|@PutMapping\|@DeleteMapping" src/main/java -
 
 **Prerequisites:**
 - PostgreSQL with `permission` database
-- OIDC identity provider configuration (issuer URI, audience)
-- Environment variables: `AUTH0_ISSUER_URI`, `AUTH0_AUDIENCE` (named for current provider; architecture is provider-agnostic)
 
 ```bash
 ./gradlew bootRun
@@ -197,7 +195,7 @@ ls src/test/java/org/budgetanalyzer/permission/
 - Use `SecurityContextUtil` to get current user
 
 **Adding new permissions:**
-- When adding new permissions via migration, also update `JwtTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/JwtTestBuilder.java` — add the new permission strings to the `admin()` factory method so integration tests across all services reflect the correct ADMIN JWT shape.
+- When adding new permissions via migration, also update `ClaimsHeaderTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java` — add the new permission strings to the `ADMIN_PERMISSIONS` list and the `admin()` factory method so integration tests across all services reflect the correct admin claims shape.
 
 **Role assignment:**
 - Validate user and role exist before assignment
