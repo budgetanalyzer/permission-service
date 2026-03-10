@@ -109,14 +109,35 @@ class InternalPermissionControllerTest {
     }
 
     @Test
-    @DisplayName("should return 401 when not authenticated")
-    void shouldReturnUnauthorizedWhenNotAuthenticated() throws Exception {
+    @DisplayName("should allow unauthenticated access to internal endpoint")
+    void shouldAllowUnauthenticatedAccessToInternalEndpoint() throws Exception {
+      // Arrange - internal endpoints are accessible without auth headers
+      var user = new User();
+      user.setId(TestConstants.TEST_USER_ID);
+      user.setIdpSub(TestConstants.TEST_IDP_SUB);
+
+      when(userSyncService.syncUser(
+              TestConstants.TEST_IDP_SUB,
+              TestConstants.TEST_EMAIL,
+              TestConstants.TEST_DISPLAY_NAME))
+          .thenReturn(user);
+
+      var effective =
+          new EffectivePermissions(
+              Set.of("USER"), Set.of("transactions:read", "transactions:write"));
+      when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
+          .thenReturn(effective);
+
+      // Act & Assert - no .with(ClaimsHeaderTestBuilder...) needed
       mockMvc
           .perform(
               get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
                   .param("email", TestConstants.TEST_EMAIL)
                   .param("displayName", TestConstants.TEST_DISPLAY_NAME))
-          .andExpect(status().isUnauthorized());
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
+          .andExpect(jsonPath("$.roles").isArray())
+          .andExpect(jsonPath("$.permissions").isArray());
     }
   }
 }
