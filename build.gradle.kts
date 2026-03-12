@@ -42,7 +42,7 @@ dependencies {
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.h2)
-    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation(libs.spring.security.test)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
