@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,9 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,12 +33,12 @@ import org.budgetanalyzer.permission.service.PermissionService;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
 import org.budgetanalyzer.permission.service.exception.DuplicateRoleAssignmentException;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
-import org.budgetanalyzer.service.security.test.TestSecurityConfig;
+import org.budgetanalyzer.service.security.ClaimsHeaderSecurityConfig;
+import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 import org.budgetanalyzer.service.servlet.api.ServletApiExceptionHandler;
 
 @WebMvcTest(UserPermissionController.class)
-@Import({TestSecurityConfig.class, ServletApiExceptionHandler.class})
-@EnableMethodSecurity
+@Import({ClaimsHeaderSecurityConfig.class, ServletApiExceptionHandler.class})
 @DisplayName("UserPermissionController")
 class UserPermissionControllerTest {
 
@@ -50,14 +46,6 @@ class UserPermissionControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @MockitoBean private PermissionService permissionService;
-
-  private Jwt createJwtWithPermissions(String userId, String... permissions) {
-    return Jwt.withTokenValue("test-token")
-        .header("alg", "RS256")
-        .claim("sub", userId)
-        .claim("permissions", List.of(permissions))
-        .build();
-  }
 
   @Nested
   @DisplayName("GET /v1/users/me/permissions")
@@ -73,11 +61,11 @@ class UserPermissionControllerTest {
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(permissions);
 
-      var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
-
       // Act & Assert
       mockMvc
-          .perform(get("/v1/users/me/permissions").with(jwt().jwt(jwt)))
+          .perform(
+              get("/v1/users/me/permissions")
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.permissions").isArray());
     }
@@ -101,17 +89,13 @@ class UserPermissionControllerTest {
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(permissions);
 
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_USERS_READ);
-
       // Act & Assert
       mockMvc
           .perform(
               get("/v1/users/{id}/permissions", TestConstants.TEST_USER_ID)
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_USERS_READ))))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_READ)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.permissions").isArray());
     }
@@ -119,11 +103,11 @@ class UserPermissionControllerTest {
     @Test
     @DisplayName("should return 403 when user lacks users:read permission")
     void shouldReturnForbiddenWhenLackingPermission() throws Exception {
-      var jwt = createJwtWithPermissions(TestConstants.TEST_ADMIN_ID);
-
       mockMvc
           .perform(
-              get("/v1/users/{id}/permissions", TestConstants.TEST_USER_ID).with(jwt().jwt(jwt)))
+              get("/v1/users/{id}/permissions", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID).withPermissions()))
           .andExpect(status().isForbidden());
     }
   }
@@ -141,17 +125,13 @@ class UserPermissionControllerTest {
       role.setName("User");
       when(permissionService.getUserRoles(TestConstants.TEST_USER_ID)).thenReturn(List.of(role));
 
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_USERS_READ);
-
       // Act & Assert
       mockMvc
           .perform(
               get("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_USERS_READ))))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_READ)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$[0].id").value("USER"));
     }
@@ -165,11 +145,11 @@ class UserPermissionControllerTest {
       role.setName("User");
       when(permissionService.getUserRoles(TestConstants.TEST_USER_ID)).thenReturn(List.of(role));
 
-      var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
-
       // Act & Assert
       mockMvc
-          .perform(get("/v1/users/{id}/roles", TestConstants.TEST_USER_ID).with(jwt().jwt(jwt)))
+          .perform(
+              get("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID).withPermissions()))
           .andExpect(status().isOk());
     }
   }
@@ -183,17 +163,14 @@ class UserPermissionControllerTest {
     void shouldAssignRoleSuccessfully() throws Exception {
       // Arrange
       var request = new UserRoleAssignmentRequest("USER");
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       // Act & Assert
       mockMvc
           .perform(
               post("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE)))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_ROLES_WRITE))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isNoContent());
@@ -206,8 +183,6 @@ class UserPermissionControllerTest {
     void shouldReturnUnprocessableEntityWhenRoleAlreadyAssigned() throws Exception {
       // Arrange
       var request = new UserRoleAssignmentRequest("USER");
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       doThrow(new DuplicateRoleAssignmentException(TestConstants.TEST_USER_ID, "USER"))
           .when(permissionService)
@@ -218,9 +193,8 @@ class UserPermissionControllerTest {
           .perform(
               post("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE)))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_ROLES_WRITE))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isUnprocessableEntity());
@@ -231,17 +205,14 @@ class UserPermissionControllerTest {
     void shouldReturnBadRequestWhenRoleIdIsBlank() throws Exception {
       // Arrange
       var request = new UserRoleAssignmentRequest("");
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
 
       // Act & Assert
       mockMvc
           .perform(
               post("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE)))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_ROLES_WRITE))
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isBadRequest())
@@ -252,12 +223,11 @@ class UserPermissionControllerTest {
     @DisplayName("should return 403 when user lacks permission")
     void shouldReturnForbiddenWhenUserLacksPermission() throws Exception {
       var request = new UserRoleAssignmentRequest("USER");
-      var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
 
       mockMvc
           .perform(
               post("/v1/users/{id}/roles", TestConstants.TEST_USER_ID)
-                  .with(jwt().jwt(jwt))
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID).withPermissions())
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isForbidden());
@@ -271,18 +241,13 @@ class UserPermissionControllerTest {
     @Test
     @DisplayName("should revoke role successfully with roles:write permission")
     void shouldRevokeRoleSuccessfully() throws Exception {
-      // Arrange
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
-
       // Act & Assert
       mockMvc
           .perform(
               delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "USER")
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE))))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_ROLES_WRITE)))
           .andExpect(status().isNoContent());
 
       verify(permissionService).revokeRole(TestConstants.TEST_USER_ID, "USER");
@@ -291,12 +256,10 @@ class UserPermissionControllerTest {
     @Test
     @DisplayName("should return 403 when user lacks roles:write permission")
     void shouldReturnForbiddenWhenUserLacksPermission() throws Exception {
-      var jwt = createJwtWithPermissions(TestConstants.TEST_USER_ID);
-
       mockMvc
           .perform(
               delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "USER")
-                  .with(jwt().jwt(jwt)))
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID).withPermissions()))
           .andExpect(status().isForbidden());
     }
 
@@ -304,9 +267,6 @@ class UserPermissionControllerTest {
     @DisplayName("should return 404 when role assignment not found")
     void shouldReturnNotFoundWhenAssignmentNotFound() throws Exception {
       // Arrange
-      var jwt =
-          createJwtWithPermissions(TestConstants.TEST_ADMIN_ID, TestConstants.PERM_ROLES_WRITE);
-
       doThrow(new ResourceNotFoundException("Role assignment not found"))
           .when(permissionService)
           .revokeRole(any(), eq("NONEXISTENT"));
@@ -316,9 +276,8 @@ class UserPermissionControllerTest {
           .perform(
               delete("/v1/users/{id}/roles/{roleId}", TestConstants.TEST_USER_ID, "NONEXISTENT")
                   .with(
-                      jwt()
-                          .jwt(jwt)
-                          .authorities(new SimpleGrantedAuthority(TestConstants.PERM_ROLES_WRITE))))
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_ROLES_WRITE)))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.type").value("NOT_FOUND"));
     }

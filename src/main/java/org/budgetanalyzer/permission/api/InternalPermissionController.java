@@ -1,6 +1,5 @@
 package org.budgetanalyzer.permission.api;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,7 +40,6 @@ public class InternalPermissionController {
           "Syncs the user from identity provider data and returns their effective permissions. "
               + "Creates the user with default role on first login.")
   @GetMapping("/{idpSub}/permissions")
-  @PreAuthorize("isAuthenticated()")
   public InternalPermissionsResponse getUserPermissions(
       @Parameter(
               description =
