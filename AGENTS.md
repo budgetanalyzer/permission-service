@@ -28,6 +28,17 @@ ls ../service-common/
 
 NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read directly.
 
+## Documentation Discipline
+
+Always keep documentation up to date after any configuration or code change.
+
+Update the nearest affected documentation in the same work:
+- `AGENTS.md` when instructions, guardrails, discovery commands, or repository-specific workflow changes
+- `README.md` when setup, usage, or repository purpose changes
+- `docs/` when architecture, configuration, APIs, behaviors, or operational workflows change
+
+Do not leave documentation updates as follow-up work.
+
 Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway claims resolution.
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
