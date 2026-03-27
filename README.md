@@ -6,14 +6,14 @@
 
 [![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway JWT minting.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint the session-gateway uses during session creation and refresh.
 
 ## Scope & Boundaries
 
 **What this service does:**
 - Manages authorization metadata: users, roles, permissions
 - Provides RBAC with simple role-permission mappings
-- Exposes an internal endpoint for the session-gateway to sync users and mint JWTs
+- Exposes an internal endpoint for the session-gateway to sync users and resolve roles/permissions
 
 **What this service does NOT solve:**
 - Data ownership: "Which transactions belong to which user?"
@@ -58,8 +58,18 @@ The `idp_sub` field stores the OIDC `sub` claim from any compliant identity prov
 ### Run
 
 ```bash
+cd ../orchestration
+tilt up
+
+cd ../permission-service
+export SPRING_DATASOURCE_PASSWORD=your_permission_database_password
 ./gradlew bootRun
 ```
+
+`SPRING_DATASOURCE_USERNAME` already defaults to `permission_service`, and the
+host defaults to `localhost:5432`. If you are reusing values from
+`../orchestration/.env`, map `POSTGRES_PERMISSION_SERVICE_PASSWORD` to
+`SPRING_DATASOURCE_PASSWORD`.
 
 ### Test
 
@@ -116,7 +126,7 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for JWT minting | Authenticated |
+| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation/refresh | Authenticated |
 
 ## Architecture
 
@@ -127,7 +137,7 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 
 ## Related Services
 
-- **Session Gateway**: Browser authentication, calls internal endpoint for JWT minting
+- **Session Gateway**: Browser authentication, calls internal endpoint to sync users and resolve roles/permissions for the current session
 - **Transaction Service**: Transaction management
 - **service-common**: Shared library (base entities, exception handling)
 
