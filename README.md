@@ -8,6 +8,11 @@
 
 Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint the session-gateway uses during session creation and refresh.
 
+The internal permissions endpoint is a service-owned security exception: it does not require
+claims headers in the application because the session-gateway calls it before user claims exist.
+Caller restriction for that path is enforced by orchestration through mesh identity and
+authorization policy, not by a shared `/internal/**` rule in `service-common`.
+
 ## Scope & Boundaries
 
 **What this service does:**
@@ -126,7 +131,7 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation/refresh | Authenticated |
+| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation/refresh | Service-owned path exception; ingress/mesh restricted |
 
 ## Architecture
 

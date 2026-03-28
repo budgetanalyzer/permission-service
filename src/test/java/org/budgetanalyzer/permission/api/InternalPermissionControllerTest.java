@@ -17,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import org.budgetanalyzer.permission.TestConstants;
+import org.budgetanalyzer.permission.config.PermissionServiceSecurityConfig;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.service.PermissionService;
 import org.budgetanalyzer.permission.service.UserSyncService;
@@ -26,7 +27,11 @@ import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 import org.budgetanalyzer.service.servlet.api.ServletApiExceptionHandler;
 
 @WebMvcTest(InternalPermissionController.class)
-@Import({ClaimsHeaderSecurityConfig.class, ServletApiExceptionHandler.class})
+@Import({
+  PermissionServiceSecurityConfig.class,
+  ClaimsHeaderSecurityConfig.class,
+  ServletApiExceptionHandler.class
+})
 @DisplayName("InternalPermissionController")
 class InternalPermissionControllerTest {
 
@@ -109,9 +114,9 @@ class InternalPermissionControllerTest {
     }
 
     @Test
-    @DisplayName("should allow unauthenticated access to internal endpoint")
-    void shouldAllowUnauthenticatedAccessToInternalEndpoint() throws Exception {
-      // Arrange - internal endpoints are accessible without auth headers
+    @DisplayName("should allow access without claims headers for the gateway integration path")
+    void shouldAllowAccessWithoutClaimsHeadersForGatewayIntegrationPath() throws Exception {
+      // Arrange - this narrow internal path is service-owned and orchestration-restricted
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
       user.setIdpSub(TestConstants.TEST_IDP_SUB);
@@ -128,7 +133,7 @@ class InternalPermissionControllerTest {
       when(permissionService.getEffectivePermissions(TestConstants.TEST_USER_ID))
           .thenReturn(effective);
 
-      // Act & Assert - no .with(ClaimsHeaderTestBuilder...) needed
+      // Act & Assert - no .with(ClaimsHeaderTestBuilder...) needed for this path exception
       mockMvc
           .perform(
               get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
