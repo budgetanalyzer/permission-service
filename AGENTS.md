@@ -105,6 +105,7 @@ tree src/main/java/org/budgetanalyzer/permission/domain
 `GET /internal/v1/users/{idpSub}/permissions` — Called by the session-gateway to:
 1. Sync user from identity provider data (creates on first login)
 2. Return `{ userId, roles, permissions }` for claims injection
+3. Bypass claims-header auth only for this one path via `PermissionServiceSecurityConfig`; orchestration still restricts callers with mesh identity and authorization policy
 
 ### Package Structure
 
@@ -203,6 +204,7 @@ ls src/test/java/org/budgetanalyzer/permission/
 
 **Security requirements:**
 - All controller methods MUST have `@PreAuthorize` annotations
+- Exception: `InternalPermissionController#getUserPermissions` is protected by the narrow path rule in `PermissionServiceSecurityConfig` instead of method-level claims auth
 - Use `SecurityContextUtil` to get current user
 
 **Adding new permissions:**
