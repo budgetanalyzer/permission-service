@@ -40,7 +40,7 @@ public class UserService {
    */
   public User getUser(String id) {
     return userRepository
-        .findByIdAndDeletedFalse(id)
+        .findByIdActive(id)
         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
   }
 

@@ -15,17 +15,10 @@ import org.budgetanalyzer.permission.domain.User;
  * and all-inclusive queries for admin/audit purposes.
  */
 @Repository
-public interface UserRepository extends JpaRepository<User, String>, SoftDeleteOperations<User> {
+public interface UserRepository
+    extends JpaRepository<User, String>, SoftDeleteOperations<User, String> {
 
   // Active user queries (filter by deleted = false)
-
-  /**
-   * Finds an active user by their ID.
-   *
-   * @param id the user ID
-   * @return the user if found and not deleted
-   */
-  Optional<User> findByIdAndDeletedFalse(String id);
 
   /**
    * Finds an active user by their identity provider subject identifier.

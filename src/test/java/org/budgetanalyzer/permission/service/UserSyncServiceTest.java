@@ -54,7 +54,7 @@ class UserSyncServiceTest {
 
       var defaultRole = new Role();
       defaultRole.setId("USER");
-      when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.of(defaultRole));
+      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(defaultRole));
 
       // Act
       var result =
@@ -107,7 +107,7 @@ class UserSyncServiceTest {
       when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.empty());
       when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-      when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.empty());
+      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.empty());
 
       // Act
       var result =
@@ -131,7 +131,7 @@ class UserSyncServiceTest {
 
       var defaultRole = new Role();
       defaultRole.setId("USER");
-      when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.of(defaultRole));
+      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(defaultRole));
 
       // Act
       userSyncService.syncUser(

@@ -1,7 +1,6 @@
 package org.budgetanalyzer.permission.repository;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -17,15 +16,7 @@ import org.budgetanalyzer.permission.domain.Permission;
  */
 @Repository
 public interface PermissionRepository
-    extends JpaRepository<Permission, String>, SoftDeleteOperations<Permission> {
-
-  /**
-   * Finds an active permission by its ID.
-   *
-   * @param id the permission ID
-   * @return the permission if found and not deleted
-   */
-  Optional<Permission> findByIdAndDeletedFalse(String id);
+    extends JpaRepository<Permission, String>, SoftDeleteOperations<Permission, String> {
 
   /**
    * Finds all active permissions for a specific resource type.

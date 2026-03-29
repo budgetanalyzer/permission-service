@@ -65,7 +65,7 @@ public class PermissionService {
   public List<Role> getUserRoles(String userId) {
     var userRoles = userRoleRepository.findByUserId(userId);
     return userRoles.stream()
-        .map(ur -> roleRepository.findByIdAndDeletedFalse(ur.getRoleId()))
+        .map(userRole -> roleRepository.findByIdActive(userRole.getRoleId()))
         .filter(Optional::isPresent)
         .map(Optional::get)
         .toList();
@@ -80,11 +80,11 @@ public class PermissionService {
   @Transactional
   public void assignRole(String userId, String roleId) {
     userRepository
-        .findByIdAndDeletedFalse(userId)
+        .findByIdActive(userId)
         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
     roleRepository
-        .findByIdAndDeletedFalse(roleId)
+        .findByIdActive(roleId)
         .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleId));
 
     if (userRoleRepository.findByUserIdAndRoleId(userId, roleId).isPresent()) {

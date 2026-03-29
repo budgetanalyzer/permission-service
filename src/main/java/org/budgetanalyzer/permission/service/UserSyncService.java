@@ -83,7 +83,7 @@ public class UserSyncService {
   }
 
   private void assignDefaultRole(User user) {
-    var defaultRole = roleRepository.findByIdAndDeletedFalse(DEFAULT_ROLE);
+    var defaultRole = roleRepository.findByIdActive(DEFAULT_ROLE);
     if (defaultRole.isEmpty()) {
       return;
     }

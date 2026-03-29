@@ -94,12 +94,11 @@ class PermissionServiceTest {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
-      when(userRepository.findByIdAndDeletedFalse(TestConstants.TEST_USER_ID))
-          .thenReturn(Optional.of(user));
+      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
 
       var role = new Role();
       role.setId("USER");
-      when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.of(role));
+      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(role));
 
       when(userRoleRepository.findByUserIdAndRoleId(TestConstants.TEST_USER_ID, "USER"))
           .thenReturn(Optional.empty());
@@ -120,12 +119,11 @@ class PermissionServiceTest {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
-      when(userRepository.findByIdAndDeletedFalse(TestConstants.TEST_USER_ID))
-          .thenReturn(Optional.of(user));
+      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
 
       var role = new Role();
       role.setId("USER");
-      when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.of(role));
+      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(role));
 
       when(userRoleRepository.findByUserIdAndRoleId(TestConstants.TEST_USER_ID, "USER"))
           .thenReturn(Optional.of(new UserRole()));
@@ -141,8 +139,7 @@ class PermissionServiceTest {
     @DisplayName("should throw ResourceNotFoundException when user not found")
     void shouldThrowWhenUserNotFound() {
       // Arrange
-      when(userRepository.findByIdAndDeletedFalse(TestConstants.TEST_USER_ID))
-          .thenReturn(Optional.empty());
+      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.empty());
 
       // Act & Assert
       assertThatThrownBy(() -> permissionService.assignRole(TestConstants.TEST_USER_ID, "USER"))
@@ -156,10 +153,9 @@ class PermissionServiceTest {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
-      when(userRepository.findByIdAndDeletedFalse(TestConstants.TEST_USER_ID))
-          .thenReturn(Optional.of(user));
+      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
 
-      when(roleRepository.findByIdAndDeletedFalse("NONEXISTENT")).thenReturn(Optional.empty());
+      when(roleRepository.findByIdActive("NONEXISTENT")).thenReturn(Optional.empty());
 
       // Act & Assert
       assertThatThrownBy(
@@ -226,8 +222,8 @@ class PermissionServiceTest {
       role2.setId("ADMIN");
       role2.setName("Administrator");
 
-      when(roleRepository.findByIdAndDeletedFalse("USER")).thenReturn(Optional.of(role1));
-      when(roleRepository.findByIdAndDeletedFalse("ADMIN")).thenReturn(Optional.of(role2));
+      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(role1));
+      when(roleRepository.findByIdActive("ADMIN")).thenReturn(Optional.of(role2));
 
       // Act
       var result = permissionService.getUserRoles(TestConstants.TEST_USER_ID);
