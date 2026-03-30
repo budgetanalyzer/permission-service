@@ -219,6 +219,8 @@ ls src/test/java/org/budgetanalyzer/permission/
 - Google Java Format enforced via Spotless
 - Run `./gradlew spotlessApply` before committing
 
+**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git workflow entirely. You may suggest what to commit, but don't do it.
+
 ## Web Search Protocol
 
 BEFORE any WebSearch tool call:
