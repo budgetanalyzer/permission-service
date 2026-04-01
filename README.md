@@ -6,10 +6,10 @@
 
 [![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint the session-gateway uses during session creation and refresh.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint Session Gateway uses during login, token exchange, and heartbeat-driven refresh.
 
 The internal permissions endpoint is a service-owned security exception: it does not require
-claims headers in the application because the session-gateway calls it before user claims exist.
+claims headers in the application because Session Gateway calls it before user claims exist.
 Caller restriction for that path is enforced by orchestration through mesh identity and
 authorization policy, not by a shared `/internal/**` rule in `service-common`.
 
@@ -18,7 +18,7 @@ authorization policy, not by a shared `/internal/**` rule in `service-common`.
 **What this service does:**
 - Manages authorization metadata: users, roles, permissions
 - Provides RBAC with simple role-permission mappings
-- Exposes an internal endpoint for the session-gateway to sync users and resolve roles/permissions
+- Exposes an internal endpoint for Session Gateway to sync users and resolve roles/permissions before it writes the Redis session hash
 
 **What this service does NOT solve:**
 - Data ownership: "Which transactions belong to which user?"
@@ -131,7 +131,7 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation/refresh | Service-owned path exception; ingress/mesh restricted |
+| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation, token exchange, and refresh | Service-owned path exception; ingress/mesh restricted |
 
 ## Architecture
 
@@ -142,7 +142,7 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 
 ## Related Services
 
-- **Session Gateway**: Browser authentication, calls internal endpoint to sync users and resolve roles/permissions for the current session
+- **Session Gateway**: Session-based edge authorization service for browser clients; calls the internal endpoint to sync users and resolve roles/permissions before writing the Redis session hash
 - **Transaction Service**: Transaction management
 - **service-common**: Shared library (base entities, exception handling)
 

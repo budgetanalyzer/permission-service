@@ -39,13 +39,13 @@ Update the nearest affected documentation in the same work:
 
 Do not leave documentation updates as follow-up work.
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint for gateway claims resolution.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint Session Gateway uses to sync users and resolve roles/permissions during session creation and refresh.
 
 **Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
 
 ## Project Status
 
-This service provides clean RBAC for the Budget Analyzer ecosystem. Session-gateway integration is complete — the gateway calls the internal endpoint during ext_authz to resolve user claims (permissions, roles) which are injected as headers into upstream requests.
+This service provides clean RBAC for the Budget Analyzer ecosystem. Session Gateway integration is complete — Session Gateway calls the internal endpoint during login, token exchange, and heartbeat-driven refresh to sync users and resolve roles/permissions before it writes the Redis session hash. Envoy ext_authz later reads that session hash and injects claims headers into upstream requests.
 
 **Current focus:** Bug fixes and documentation, not new features.
 
@@ -102,7 +102,7 @@ tree src/main/java/org/budgetanalyzer/permission/domain
 
 ### Internal Permissions Endpoint
 
-`GET /internal/v1/users/{idpSub}/permissions` — Called by the session-gateway to:
+`GET /internal/v1/users/{idpSub}/permissions` — Called by Session Gateway during login, token exchange, and heartbeat-driven refresh to:
 1. Sync user from identity provider data (creates on first login)
 2. Return `{ userId, roles, permissions }` for claims injection
 3. Bypass claims-header auth only for this one path via `PermissionServiceSecurityConfig`; orchestration still restricts callers with mesh identity and authorization policy
@@ -129,7 +129,7 @@ org.budgetanalyzer.permission/
 **Key endpoint groups:**
 - `/v1/users` - User permissions and role assignments
 - `/v1/roles` - Role CRUD operations
-- `/internal/v1/users` - Internal endpoint for gateway integration
+- `/internal/v1/users` - Internal endpoint for Session Gateway user sync and claims lookup
 
 **Via API Gateway:** http://localhost:8080/permission-service/...
 
