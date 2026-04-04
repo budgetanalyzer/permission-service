@@ -139,17 +139,16 @@ class RoleControllerTest {
 
     @Test
     @DisplayName("should create role successfully with roles:write permission")
-    @SuppressWarnings("checkstyle:VariableDeclarationUsageDistance")
     void shouldCreateRoleSuccessfully() throws Exception {
       // Arrange
-      var request = new RoleRequest("Project Manager", "Manages project resources");
-
       var createdRole = new Role();
       createdRole.setId("role_abc123");
       createdRole.setName("Project Manager");
       createdRole.setDescription("Manages project resources");
 
       when(roleService.createRole(anyString(), anyString())).thenReturn(createdRole);
+
+      var request = new RoleRequest("Project Manager", "Manages project resources");
 
       // Act & Assert
       mockMvc
@@ -210,17 +209,16 @@ class RoleControllerTest {
 
     @Test
     @DisplayName("should update role successfully")
-    @SuppressWarnings("checkstyle:VariableDeclarationUsageDistance")
     void shouldUpdateRoleSuccessfully() throws Exception {
       // Arrange
-      var request = new RoleRequest("Updated Name", "Updated description");
-
       var updatedRole = new Role();
       updatedRole.setId("ADMIN");
       updatedRole.setName("Updated Name");
       updatedRole.setDescription("Updated description");
 
       when(roleService.updateRole(eq("ADMIN"), anyString(), anyString())).thenReturn(updatedRole);
+
+      var request = new RoleRequest("Updated Name", "Updated description");
 
       // Act & Assert
       mockMvc
