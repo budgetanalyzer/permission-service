@@ -1,5 +1,7 @@
 package org.budgetanalyzer.permission.domain;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -32,6 +34,15 @@ public class User extends SoftDeletableEntity {
 
   @Column(name = "display_name")
   private String displayName;
+
+  @Column(name = "status", nullable = false, length = 20)
+  private String status = "ACTIVE";
+
+  @Column(name = "deactivated_at")
+  private Instant deactivatedAt;
+
+  @Column(name = "deactivated_by", length = 50)
+  private String deactivatedBy;
 
   public User() {}
 
@@ -72,5 +83,28 @@ public class User extends SoftDeletableEntity {
 
   public void setDisplayName(String displayName) {
     this.displayName = displayName;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public Instant getDeactivatedAt() {
+    return deactivatedAt;
+  }
+
+  public String getDeactivatedBy() {
+    return deactivatedBy;
+  }
+
+  /** Marks this user as deactivated, recording the actor and timestamp. */
+  public void deactivate(String deactivatedBy) {
+    this.status = "DEACTIVATED";
+    this.deactivatedAt = Instant.now();
+    this.deactivatedBy = deactivatedBy;
+  }
+
+  public boolean isDeactivated() {
+    return "DEACTIVATED".equals(status);
   }
 }

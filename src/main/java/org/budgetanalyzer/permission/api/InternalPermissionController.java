@@ -1,7 +1,11 @@
 package org.budgetanalyzer.permission.api;
 
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,8 +14,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import org.budgetanalyzer.permission.api.request.UserDeactivationRequest;
 import org.budgetanalyzer.permission.api.response.InternalPermissionsResponse;
+import org.budgetanalyzer.permission.api.response.UserDeactivationResponse;
 import org.budgetanalyzer.permission.service.PermissionService;
+import org.budgetanalyzer.permission.service.UserService;
 import org.budgetanalyzer.permission.service.UserSyncService;
 
 /**
@@ -27,11 +34,15 @@ public class InternalPermissionController {
 
   private final UserSyncService userSyncService;
   private final PermissionService permissionService;
+  private final UserService userService;
 
   public InternalPermissionController(
-      UserSyncService userSyncService, PermissionService permissionService) {
+      UserSyncService userSyncService,
+      PermissionService permissionService,
+      UserService userService) {
     this.userSyncService = userSyncService;
     this.permissionService = permissionService;
+    this.userService = userService;
   }
 
   @Operation(
@@ -53,5 +64,19 @@ public class InternalPermissionController {
     var effective = permissionService.getEffectivePermissions(user.getId());
     return new InternalPermissionsResponse(
         user.getId(), effective.roles(), effective.permissions());
+  }
+
+  @Operation(
+      summary = "Deactivate a user",
+      description =
+          "Marks a user as deactivated, removes all role assignments, and revokes active sessions. "
+              + "Idempotent — deactivating an already-deactivated user returns 200.")
+  @PostMapping("/{userId}/deactivate")
+  public UserDeactivationResponse deactivateUser(
+      @Parameter(description = "User ID to deactivate") @PathVariable String userId,
+      @Valid @RequestBody UserDeactivationRequest request) {
+    var result = userService.deactivateUser(userId, request.deactivatedBy());
+    return new UserDeactivationResponse(
+        result.userId(), result.status(), result.rolesRemoved(), result.sessionsRevoked());
   }
 }

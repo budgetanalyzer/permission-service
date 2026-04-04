@@ -35,4 +35,16 @@ public interface UserRepository
    * @return the user if found and not deleted
    */
   Optional<User> findByEmailAndDeletedFalse(String email);
+
+  /**
+   * Checks whether a user with the given identity provider subject and status exists.
+   *
+   * <p>Matches regardless of soft-delete state, ensuring deactivated-then-deleted users are still
+   * caught.
+   *
+   * @param idpSub the identity provider subject identifier
+   * @param status the user status to check for
+   * @return true if a matching user exists
+   */
+  boolean existsByIdpSubAndStatus(String idpSub, String status);
 }

@@ -36,6 +36,9 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+session-gateway:
+  base-url: ${SESSION_GATEWAY_BASE_URL:http://localhost:8085/session-gateway}
+
 budgetanalyzer:
   service:
     http-logging:

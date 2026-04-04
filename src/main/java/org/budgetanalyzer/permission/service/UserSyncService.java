@@ -10,6 +10,7 @@ import org.budgetanalyzer.permission.domain.UserRole;
 import org.budgetanalyzer.permission.repository.RoleRepository;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
+import org.budgetanalyzer.permission.service.exception.UserDeactivatedException;
 
 /**
  * Service for synchronizing users with an identity provider.
@@ -56,6 +57,9 @@ public class UserSyncService {
    * @return the synced user
    */
   public User syncUser(String idpSub, String email, String displayName) {
+    if (userRepository.existsByIdpSubAndStatus(idpSub, "DEACTIVATED")) {
+      throw new UserDeactivatedException(idpSub);
+    }
     return userRepository
         .findByIdpSubAndDeletedFalse(idpSub)
         .map(user -> updateUser(user, email, displayName))

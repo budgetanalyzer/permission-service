@@ -132,6 +132,7 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation, token exchange, and refresh | Service-owned path exception; ingress/mesh restricted |
+| POST | `/internal/v1/users/{userId}/deactivate` | Commit deactivation and role removal, then attempt session revocation | Service-owned path exception; ingress/mesh restricted |
 
 ## Architecture
 
@@ -139,6 +140,11 @@ Custom roles can be created via the API. Role assignment requires `roles:write` 
 
 - **Users, Roles, Permissions**: Soft delete with `deleted` flag
 - **Assignments (UserRole, RolePermission)**: Hard delete on revocation
+
+### Deactivation Flow
+
+- Deactivation commits the user status change and role removal in PostgreSQL before calling Session Gateway to revoke sessions
+- The login and refresh gate uses an indexed `idp_sub + status` lookup so deactivated users are rejected without scanning the full `users` table
 
 ## Related Services
 
