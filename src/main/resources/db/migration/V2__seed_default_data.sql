@@ -12,7 +12,7 @@ INSERT INTO roles (id, name, description, is_system, created_at, created_by) VAL
     ('USER', 'User', 'Standard access to own resources', true, CURRENT_TIMESTAMP, 'SYSTEM');
 
 -- =============================================================================
--- Default permissions (14)
+-- Default permissions (16)
 -- =============================================================================
 INSERT INTO permissions (id, name, resource_type, action, created_at, created_by) VALUES
     -- Transaction management
@@ -38,12 +38,13 @@ INSERT INTO permissions (id, name, resource_type, action, created_at, created_by
     -- Role management
     ('roles:read', 'View Roles', 'role', 'read', CURRENT_TIMESTAMP, 'SYSTEM'),
     ('roles:write', 'Create/Modify Roles', 'role', 'write', CURRENT_TIMESTAMP, 'SYSTEM'),
+    ('roles:delete', 'Delete Roles', 'role', 'delete', CURRENT_TIMESTAMP, 'SYSTEM'),
 
     -- Audit
     ('audit:read', 'Read Audit Logs', 'audit', 'read', CURRENT_TIMESTAMP, 'SYSTEM');
 
 -- =============================================================================
--- ADMIN gets all 15 permissions
+-- ADMIN gets all 16 permissions
 -- =============================================================================
 INSERT INTO role_permissions (role_id, permission_id, created_at, created_by)
 SELECT 'ADMIN', id, CURRENT_TIMESTAMP, 'SYSTEM' FROM permissions;

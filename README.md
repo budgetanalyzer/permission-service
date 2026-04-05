@@ -100,7 +100,7 @@ Key tables:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | All 15 permissions |
+| ADMIN | Full access | All 16 permissions |
 | USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write |
 
 Custom roles can be created via the API. Role assignment requires `roles:write` permission.
