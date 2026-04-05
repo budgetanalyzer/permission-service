@@ -7,9 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserRole;
+import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.RoleRepository;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
+import org.budgetanalyzer.permission.service.exception.UserDeactivatedException;
 
 /**
  * Service for synchronizing users with an identity provider.
@@ -56,6 +58,9 @@ public class UserSyncService {
    * @return the synced user
    */
   public User syncUser(String idpSub, String email, String displayName) {
+    if (userRepository.existsByIdpSubAndStatus(idpSub, UserStatus.DEACTIVATED)) {
+      throw new UserDeactivatedException("User with idpSub " + idpSub + " is deactivated");
+    }
     return userRepository
         .findByIdpSubAndDeletedFalse(idpSub)
         .map(user -> updateUser(user, email, displayName))
@@ -83,7 +88,7 @@ public class UserSyncService {
   }
 
   private void assignDefaultRole(User user) {
-    var defaultRole = roleRepository.findByIdActive(DEFAULT_ROLE);
+    var defaultRole = roleRepository.findByIdNotDeleted(DEFAULT_ROLE);
     if (defaultRole.isEmpty()) {
       return;
     }

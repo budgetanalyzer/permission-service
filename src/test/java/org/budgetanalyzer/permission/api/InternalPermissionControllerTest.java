@@ -22,6 +22,7 @@ import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.service.PermissionService;
 import org.budgetanalyzer.permission.service.UserSyncService;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
+import org.budgetanalyzer.permission.service.exception.UserDeactivatedException;
 import org.budgetanalyzer.service.security.ClaimsHeaderSecurityConfig;
 import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 import org.budgetanalyzer.service.servlet.api.ServletApiExceptionHandler;
@@ -143,6 +144,29 @@ class InternalPermissionControllerTest {
           .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
           .andExpect(jsonPath("$.roles").isArray())
           .andExpect(jsonPath("$.permissions").isArray());
+    }
+
+    @Test
+    @DisplayName("should return 422 when user is deactivated")
+    void shouldReturn422WhenUserIsDeactivated() throws Exception {
+      // Arrange
+      when(userSyncService.syncUser(
+              TestConstants.TEST_IDP_SUB,
+              TestConstants.TEST_EMAIL,
+              TestConstants.TEST_DISPLAY_NAME))
+          .thenThrow(
+              new UserDeactivatedException(
+                  "User with idpSub " + TestConstants.TEST_IDP_SUB + " is deactivated"));
+
+      // Act & Assert
+      mockMvc
+          .perform(
+              get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
+                  .param("email", TestConstants.TEST_EMAIL)
+                  .param("displayName", TestConstants.TEST_DISPLAY_NAME))
+          .andExpect(status().isUnprocessableEntity())
+          .andExpect(jsonPath("$.type").value("APPLICATION_ERROR"))
+          .andExpect(jsonPath("$.code").value("USER_DEACTIVATED"));
     }
   }
 }

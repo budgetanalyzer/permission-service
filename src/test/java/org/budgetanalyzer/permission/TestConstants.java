@@ -19,6 +19,9 @@ public final class TestConstants {
   public static final String PERM_ROLES_DELETE = "roles:delete";
   public static final String PERM_AUDIT_READ = "audit:read";
 
+  // Deactivation
+  public static final String TEST_DEACTIVATED_BY = TEST_ADMIN_ID;
+
   // IDP test subjects (auth0 prefix reflects current provider; idp_sub is provider-agnostic)
   public static final String TEST_IDP_SUB = "auth0|test123";
   public static final String TEST_IDP_SUB_ADMIN = "auth0|admin456";

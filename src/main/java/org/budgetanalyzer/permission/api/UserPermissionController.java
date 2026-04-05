@@ -25,8 +25,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.budgetanalyzer.permission.api.request.UserRoleAssignmentRequest;
 import org.budgetanalyzer.permission.api.response.RoleResponse;
+import org.budgetanalyzer.permission.api.response.UserDeactivationResponse;
 import org.budgetanalyzer.permission.api.response.UserPermissionsResponse;
 import org.budgetanalyzer.permission.service.PermissionService;
+import org.budgetanalyzer.permission.service.UserService;
 import org.budgetanalyzer.service.api.ApiErrorResponse;
 import org.budgetanalyzer.service.security.SecurityContextUtil;
 
@@ -41,9 +43,11 @@ import org.budgetanalyzer.service.security.SecurityContextUtil;
 public class UserPermissionController {
 
   private final PermissionService permissionService;
+  private final UserService userService;
 
-  public UserPermissionController(PermissionService permissionService) {
+  public UserPermissionController(PermissionService permissionService, UserService userService) {
     this.permissionService = permissionService;
+    this.userService = userService;
   }
 
   @Operation(
@@ -158,5 +162,40 @@ public class UserPermissionController {
       @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id,
       @Parameter(description = "Role ID to revoke", example = "USER") @PathVariable String roleId) {
     permissionService.revokeRole(id, roleId);
+  }
+
+  @Operation(
+      summary = "Deactivate a user",
+      description =
+          "Marks a user as deactivated, removes all role assignments, and revokes active sessions. "
+              + "Idempotent — deactivating an already-deactivated user returns 200.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "User deactivated successfully",
+        content = @Content(schema = @Schema(implementation = UserDeactivationResponse.class))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Insufficient permissions",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "User not found",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Session revocation failed after retry; user was deactivated, retry is safe",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+  })
+  @PostMapping("/{id}/deactivate")
+  @PreAuthorize("hasAuthority('users:write')")
+  public UserDeactivationResponse deactivateUser(
+      @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id) {
+    var deactivatedBy =
+        SecurityContextUtil.getCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));
+    var result = userService.deactivateUser(id, deactivatedBy);
+    return new UserDeactivationResponse(
+        result.userId(), result.status(), result.rolesRemoved(), result.sessionsRevoked());
   }
 }

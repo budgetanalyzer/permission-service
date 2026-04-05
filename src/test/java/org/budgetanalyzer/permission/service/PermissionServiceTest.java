@@ -28,6 +28,7 @@ import org.budgetanalyzer.permission.repository.RoleRepository;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.service.exception.DuplicateRoleAssignmentException;
+import org.budgetanalyzer.permission.service.exception.UserDeactivatedException;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -94,11 +95,12 @@ class PermissionServiceTest {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
-      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
+      when(userRepository.findByIdNotDeleted(TestConstants.TEST_USER_ID))
+          .thenReturn(Optional.of(user));
 
       var role = new Role();
       role.setId("USER");
-      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(role));
+      when(roleRepository.findByIdNotDeleted("USER")).thenReturn(Optional.of(role));
 
       when(userRoleRepository.findByUserIdAndRoleId(TestConstants.TEST_USER_ID, "USER"))
           .thenReturn(Optional.empty());
@@ -119,11 +121,12 @@ class PermissionServiceTest {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
-      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
+      when(userRepository.findByIdNotDeleted(TestConstants.TEST_USER_ID))
+          .thenReturn(Optional.of(user));
 
       var role = new Role();
       role.setId("USER");
-      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(role));
+      when(roleRepository.findByIdNotDeleted("USER")).thenReturn(Optional.of(role));
 
       when(userRoleRepository.findByUserIdAndRoleId(TestConstants.TEST_USER_ID, "USER"))
           .thenReturn(Optional.of(new UserRole()));
@@ -136,10 +139,28 @@ class PermissionServiceTest {
     }
 
     @Test
+    @DisplayName("should throw UserDeactivatedException when user is deactivated")
+    void shouldThrowWhenUserIsDeactivated() {
+      // Arrange
+      var user = new User();
+      user.setId(TestConstants.TEST_USER_ID);
+      user.deactivate("admin");
+      when(userRepository.findByIdNotDeleted(TestConstants.TEST_USER_ID))
+          .thenReturn(Optional.of(user));
+
+      // Act & Assert
+      assertThatThrownBy(() -> permissionService.assignRole(TestConstants.TEST_USER_ID, "USER"))
+          .isInstanceOf(UserDeactivatedException.class);
+
+      verify(userRoleRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("should throw ResourceNotFoundException when user not found")
     void shouldThrowWhenUserNotFound() {
       // Arrange
-      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.empty());
+      when(userRepository.findByIdNotDeleted(TestConstants.TEST_USER_ID))
+          .thenReturn(Optional.empty());
 
       // Act & Assert
       assertThatThrownBy(() -> permissionService.assignRole(TestConstants.TEST_USER_ID, "USER"))
@@ -153,9 +174,10 @@ class PermissionServiceTest {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
-      when(userRepository.findByIdActive(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
+      when(userRepository.findByIdNotDeleted(TestConstants.TEST_USER_ID))
+          .thenReturn(Optional.of(user));
 
-      when(roleRepository.findByIdActive("NONEXISTENT")).thenReturn(Optional.empty());
+      when(roleRepository.findByIdNotDeleted("NONEXISTENT")).thenReturn(Optional.empty());
 
       // Act & Assert
       assertThatThrownBy(
@@ -222,8 +244,8 @@ class PermissionServiceTest {
       role2.setId("ADMIN");
       role2.setName("Administrator");
 
-      when(roleRepository.findByIdActive("USER")).thenReturn(Optional.of(role1));
-      when(roleRepository.findByIdActive("ADMIN")).thenReturn(Optional.of(role2));
+      when(roleRepository.findByIdNotDeleted("USER")).thenReturn(Optional.of(role1));
+      when(roleRepository.findByIdNotDeleted("ADMIN")).thenReturn(Optional.of(role2));
 
       // Act
       var result = permissionService.getUserRoles(TestConstants.TEST_USER_ID);

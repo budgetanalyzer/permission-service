@@ -36,6 +36,14 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+session-gateway:
+  base-url: ${SESSION_GATEWAY_BASE_URL:http://localhost:8085/session-gateway}
+  revocation:
+    max-attempts: ${SESSION_GATEWAY_REVOCATION_MAX_ATTEMPTS:3}
+    initial-delay: ${SESSION_GATEWAY_REVOCATION_INITIAL_DELAY:200ms}
+    multiplier: ${SESSION_GATEWAY_REVOCATION_MULTIPLIER:2.0}
+    max-delay: ${SESSION_GATEWAY_REVOCATION_MAX_DELAY:2s}
+
 budgetanalyzer:
   service:
     http-logging:
