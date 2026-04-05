@@ -105,7 +105,17 @@ tree src/main/java/org/budgetanalyzer/permission/domain
 `GET /internal/v1/users/{idpSub}/permissions` — Called by Session Gateway during login, token exchange, and heartbeat-driven refresh to:
 1. Sync user from identity provider data (creates on first login)
 2. Return `{ userId, roles, permissions }` for claims injection
-3. Bypass claims-header auth only for this one path via `PermissionServiceSecurityConfig`; orchestration still restricts callers with mesh identity and authorization policy
+3. Bypass claims-header auth only for this narrow path (`/internal/v1/users/*/permissions`) via `PermissionServiceSecurityConfig`; orchestration still restricts callers with mesh identity and authorization policy
+
+### User Deactivation Endpoint
+
+`POST /v1/users/{id}/deactivate` — Admin UI action on `UserPermissionController`, protected by `@PreAuthorize("hasAuthority('users:write')")`. The actor identity comes from the security context (no request body).
+
+**Response semantics:**
+- **200** — user deactivated and sessions revoked (returns `UserDeactivationResponse`)
+- **503** — user deactivated but session revocation failed after bounded retry; safe to retry the same request
+
+Session revocation uses bounded retry with exponential backoff configured via `session-gateway.revocation.*` properties in `application.yml`. The `SessionGatewayClient` retries connection failures, 5xx, and 429 responses; 4xx (except 429) fail immediately without retry.
 
 ### Package Structure
 
@@ -204,7 +214,7 @@ ls src/test/java/org/budgetanalyzer/permission/
 
 **Security requirements:**
 - All controller methods MUST have `@PreAuthorize` annotations
-- Exception: `InternalPermissionController#getUserPermissions` is protected by the narrow path rule in `PermissionServiceSecurityConfig` instead of method-level claims auth
+- Exception: `InternalPermissionController#getUserPermissions` is protected by the narrow path rule (`/internal/v1/users/*/permissions`) in `PermissionServiceSecurityConfig` instead of method-level claims auth
 - Use `SecurityContextUtil` to get current user
 
 **Adding new permissions:**

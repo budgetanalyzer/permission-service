@@ -13,6 +13,7 @@ import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
+import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 
 /**
  * Service for user management with soft delete support.
@@ -56,7 +57,7 @@ public class UserService {
    */
   public User getUser(String id) {
     return userRepository
-        .findByIdActive(id)
+        .findByIdNotDeleted(id)
         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
   }
 
@@ -96,13 +97,18 @@ public class UserService {
                 transactionStatus -> persistUserDeactivation(userId, deactivatedBy)),
             "User deactivation transaction returned null");
 
-    var sessionsRevoked = sessionGatewayClient.revokeUserSessions(userId);
+    var revocationResult = sessionGatewayClient.revokeUserSessions(userId);
+
+    if (!revocationResult.revoked()) {
+      throw new ServiceUnavailableException(
+          "User " + userId + " was deactivated but session revocation failed; retry is safe");
+    }
 
     return new UserDeactivationResult(
         persistedUserDeactivation.userId(),
         persistedUserDeactivation.status(),
         persistedUserDeactivation.rolesRemoved(),
-        sessionsRevoked);
+        true);
   }
 
   private PersistedUserDeactivation persistUserDeactivation(String userId, String deactivatedBy) {

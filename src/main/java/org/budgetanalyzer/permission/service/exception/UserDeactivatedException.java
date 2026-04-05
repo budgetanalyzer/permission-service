@@ -3,7 +3,7 @@ package org.budgetanalyzer.permission.service.exception;
 import org.budgetanalyzer.service.exception.BusinessException;
 
 /**
- * Thrown when a deactivated user attempts to log in.
+ * Thrown when an operation is attempted on a deactivated user.
  *
  * <p>Results in HTTP 422 Unprocessable Entity.
  */
@@ -12,9 +12,9 @@ public class UserDeactivatedException extends BusinessException {
   /**
    * Constructs a new UserDeactivatedException.
    *
-   * @param idpSub the identity provider subject identifier of the deactivated user
+   * @param message the detail message describing the deactivation context
    */
-  public UserDeactivatedException(String idpSub) {
-    super("User with idpSub " + idpSub + " is deactivated", "USER_DEACTIVATED");
+  public UserDeactivatedException(String message) {
+    super(message, "USER_DEACTIVATED");
   }
 }

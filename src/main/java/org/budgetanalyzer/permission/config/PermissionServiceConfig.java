@@ -1,12 +1,14 @@
 package org.budgetanalyzer.permission.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 /** Central configuration for permission-service beans. */
 @Configuration
+@EnableConfigurationProperties(SessionRevocationProperties.class)
 public class PermissionServiceConfig {
 
   /**

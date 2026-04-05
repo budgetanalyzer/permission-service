@@ -13,6 +13,7 @@ import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
 import org.budgetanalyzer.permission.service.exception.DuplicateRoleAssignmentException;
+import org.budgetanalyzer.permission.service.exception.UserDeactivatedException;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 
 /**
@@ -65,7 +66,7 @@ public class PermissionService {
   public List<Role> getUserRoles(String userId) {
     var userRoles = userRoleRepository.findByUserId(userId);
     return userRoles.stream()
-        .map(userRole -> roleRepository.findByIdActive(userRole.getRoleId()))
+        .map(userRole -> roleRepository.findByIdNotDeleted(userRole.getRoleId()))
         .filter(Optional::isPresent)
         .map(Optional::get)
         .toList();
@@ -79,12 +80,17 @@ public class PermissionService {
    */
   @Transactional
   public void assignRole(String userId, String roleId) {
-    userRepository
-        .findByIdActive(userId)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+    var user =
+        userRepository
+            .findByIdNotDeleted(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+    if (user.isDeactivated()) {
+      throw new UserDeactivatedException("Cannot assign role to deactivated user: " + userId);
+    }
 
     roleRepository
-        .findByIdActive(roleId)
+        .findByIdNotDeleted(roleId)
         .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleId));
 
     if (userRoleRepository.findByUserIdAndRoleId(userId, roleId).isPresent()) {

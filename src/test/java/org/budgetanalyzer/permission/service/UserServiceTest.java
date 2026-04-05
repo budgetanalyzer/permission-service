@@ -23,10 +23,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
+import org.budgetanalyzer.permission.client.SessionRevocationResult;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
+import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserService")
@@ -66,7 +68,8 @@ class UserServiceTest {
 
       when(userRepository.findById(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
       when(userRoleRepository.deleteByUserId(TestConstants.TEST_USER_ID)).thenReturn(2);
-      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID)).thenReturn(true);
+      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID))
+          .thenReturn(new SessionRevocationResult(true, false));
 
       // Act
       var result =
@@ -100,7 +103,8 @@ class UserServiceTest {
       user.deactivate(TestConstants.TEST_DEACTIVATED_BY);
 
       when(userRepository.findById(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
-      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID)).thenReturn(true);
+      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID))
+          .thenReturn(new SessionRevocationResult(true, false));
 
       // Act
       var result =
@@ -156,8 +160,9 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should report partial failure when session revocation fails")
-    void shouldReportPartialFailure() {
+    @DisplayName(
+        "should throw ServiceUnavailableException when session revocation exhausts retries")
+    void shouldThrowWhenSessionRevocationExhaustsRetries() {
       // Arrange
       var user = new User();
       user.setId(TestConstants.TEST_USER_ID);
@@ -165,20 +170,48 @@ class UserServiceTest {
 
       when(userRepository.findById(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
       when(userRoleRepository.deleteByUserId(TestConstants.TEST_USER_ID)).thenReturn(1);
-      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID)).thenReturn(false);
+      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID))
+          .thenReturn(new SessionRevocationResult(false, true));
 
-      // Act
-      var result =
-          userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY);
+      // Act & Assert
+      assertThatThrownBy(
+              () ->
+                  userService.deactivateUser(
+                      TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY))
+          .isInstanceOf(ServiceUnavailableException.class)
+          .hasMessageContaining(TestConstants.TEST_USER_ID)
+          .hasMessageContaining("retry is safe");
 
-      // Assert
-      assertThat(result.status()).isEqualTo("DEACTIVATED");
-      assertThat(result.rolesRemoved()).isEqualTo(1);
-      assertThat(result.sessionsRevoked()).isFalse();
-
+      // Verify deactivation was persisted before revocation attempt
       var captor = ArgumentCaptor.forClass(User.class);
       verify(userRepository).save(captor.capture());
       assertThat(captor.getValue().isDeactivated()).isTrue();
+    }
+
+    @Test
+    @DisplayName(
+        "should throw ServiceUnavailableException when session revocation fails"
+            + " with non-retryable error")
+    void shouldThrowWhenSessionRevocationFailsNonRetryable() {
+      // Arrange
+      var user = new User();
+      user.setId(TestConstants.TEST_USER_ID);
+      user.setIdpSub(TestConstants.TEST_IDP_SUB);
+
+      when(userRepository.findById(TestConstants.TEST_USER_ID)).thenReturn(Optional.of(user));
+      when(userRoleRepository.deleteByUserId(TestConstants.TEST_USER_ID)).thenReturn(1);
+      when(sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID))
+          .thenReturn(new SessionRevocationResult(false, false));
+
+      // Act & Assert
+      assertThatThrownBy(
+              () ->
+                  userService.deactivateUser(
+                      TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY))
+          .isInstanceOf(ServiceUnavailableException.class)
+          .hasMessageContaining(TestConstants.TEST_USER_ID);
+
+      verify(userRepository).save(any());
     }
   }
 }

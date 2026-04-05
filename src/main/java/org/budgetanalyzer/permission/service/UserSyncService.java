@@ -58,7 +58,7 @@ public class UserSyncService {
    */
   public User syncUser(String idpSub, String email, String displayName) {
     if (userRepository.existsByIdpSubAndStatus(idpSub, "DEACTIVATED")) {
-      throw new UserDeactivatedException(idpSub);
+      throw new UserDeactivatedException("User with idpSub " + idpSub + " is deactivated");
     }
     return userRepository
         .findByIdpSubAndDeletedFalse(idpSub)
@@ -87,7 +87,7 @@ public class UserSyncService {
   }
 
   private void assignDefaultRole(User user) {
-    var defaultRole = roleRepository.findByIdActive(DEFAULT_ROLE);
+    var defaultRole = roleRepository.findByIdNotDeleted(DEFAULT_ROLE);
     if (defaultRole.isEmpty()) {
       return;
     }

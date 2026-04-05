@@ -28,11 +28,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.api.request.UserRoleAssignmentRequest;
+import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.Role;
 import org.budgetanalyzer.permission.service.PermissionService;
+import org.budgetanalyzer.permission.service.UserService;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
+import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
 import org.budgetanalyzer.permission.service.exception.DuplicateRoleAssignmentException;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
+import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 import org.budgetanalyzer.service.security.ClaimsHeaderSecurityConfig;
 import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 import org.budgetanalyzer.service.servlet.api.ServletApiExceptionHandler;
@@ -46,6 +50,8 @@ class UserPermissionControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @MockitoBean private PermissionService permissionService;
+  @MockitoBean private UserService userService;
+  @MockitoBean private SessionGatewayClient sessionGatewayClient;
 
   @Nested
   @DisplayName("GET /v1/users/me/permissions")
@@ -280,6 +286,84 @@ class UserPermissionControllerTest {
                           .withPermissions(TestConstants.PERM_ROLES_WRITE)))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.type").value("NOT_FOUND"));
+    }
+  }
+
+  @Nested
+  @DisplayName("POST /v1/users/{id}/deactivate")
+  class DeactivateUserTests {
+
+    @Test
+    @DisplayName("should deactivate user")
+    void shouldDeactivateUser() throws Exception {
+      // Arrange
+      var result = new UserDeactivationResult(TestConstants.TEST_USER_ID, "DEACTIVATED", 2, true);
+      when(userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_ADMIN_ID))
+          .thenReturn(result);
+
+      // Act & Assert
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_WRITE)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
+          .andExpect(jsonPath("$.status").value("DEACTIVATED"))
+          .andExpect(jsonPath("$.rolesRemoved").value(2))
+          .andExpect(jsonPath("$.sessionsRevoked").value(true));
+    }
+
+    @Test
+    @DisplayName("should return 404 when user not found")
+    void shouldReturn404WhenUserNotFound() throws Exception {
+      // Arrange
+      when(userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_ADMIN_ID))
+          .thenThrow(
+              new ResourceNotFoundException("User not found: " + TestConstants.TEST_USER_ID));
+
+      // Act & Assert
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_WRITE)))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.type").value("NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("should return 403 when lacking permission")
+    void shouldReturn403WhenLackingPermission() throws Exception {
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID).withPermissions()))
+          .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("should return 503 when session revocation fails")
+    void shouldReturn503WhenSessionRevocationFails() throws Exception {
+      // Arrange
+      when(userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_ADMIN_ID))
+          .thenThrow(
+              new ServiceUnavailableException(
+                  "User "
+                      + TestConstants.TEST_USER_ID
+                      + " was deactivated but session revocation failed; retry is safe"));
+
+      // Act & Assert
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_WRITE)))
+          .andExpect(status().isServiceUnavailable())
+          .andExpect(jsonPath("$.type").value("SERVICE_UNAVAILABLE"));
     }
   }
 }

@@ -59,7 +59,7 @@ public class RoleService {
    */
   public Role getRole(String id) {
     return roleRepository
-        .findByIdActive(id)
+        .findByIdNotDeleted(id)
         .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + id));
   }
 
