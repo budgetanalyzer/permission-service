@@ -22,6 +22,7 @@ import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.domain.Role;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserRole;
+import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.RoleRepository;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
@@ -50,7 +51,8 @@ class UserSyncServiceTest {
     @DisplayName("should create new user when not found")
     void shouldCreateNewUserWhenNotFound() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(false);
       when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.empty());
@@ -80,7 +82,8 @@ class UserSyncServiceTest {
     @DisplayName("should update existing user")
     void shouldUpdateExistingUser() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(false);
       var existingUser = new User();
       existingUser.setId(TestConstants.TEST_USER_ID);
@@ -110,7 +113,8 @@ class UserSyncServiceTest {
     @DisplayName("should not assign default role when role not configured")
     void shouldNotAssignDefaultRoleWhenNotConfigured() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(false);
       when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.empty());
@@ -133,7 +137,8 @@ class UserSyncServiceTest {
     @DisplayName("should assign default role with correct userId and roleId")
     void shouldAssignDefaultRoleCorrectly() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(false);
       when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.empty());
@@ -162,7 +167,8 @@ class UserSyncServiceTest {
     @DisplayName("should throw when user is deactivated")
     void shouldThrowWhenUserIsDeactivated() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(true);
 
       // Act & Assert
@@ -182,7 +188,8 @@ class UserSyncServiceTest {
     @DisplayName("should create user when not deactivated")
     void shouldCreateUserWhenNotDeactivated() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(false);
       when(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
           .thenReturn(Optional.empty());
@@ -206,7 +213,8 @@ class UserSyncServiceTest {
     @DisplayName("should update active user when not deactivated")
     void shouldUpdateActiveUserWhenNotDeactivated() {
       // Arrange
-      when(userRepository.existsByIdpSubAndStatus(TestConstants.TEST_IDP_SUB, "DEACTIVATED"))
+      when(userRepository.existsByIdpSubAndStatus(
+              TestConstants.TEST_IDP_SUB, UserStatus.DEACTIVATED))
           .thenReturn(false);
 
       var existingUser = new User();

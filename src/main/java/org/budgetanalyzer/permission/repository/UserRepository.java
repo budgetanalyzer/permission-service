@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import org.budgetanalyzer.core.repository.SoftDeleteOperations;
 import org.budgetanalyzer.permission.domain.User;
+import org.budgetanalyzer.permission.domain.UserStatus;
 
 /**
  * Repository for User entities with soft-delete support.
@@ -46,5 +47,5 @@ public interface UserRepository
    * @param status the user status to check for
    * @return true if a matching user exists
    */
-  boolean existsByIdpSubAndStatus(String idpSub, String status);
+  boolean existsByIdpSubAndStatus(String idpSub, UserStatus status);
 }

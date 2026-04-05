@@ -30,6 +30,7 @@ import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.api.request.UserRoleAssignmentRequest;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.Role;
+import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.service.PermissionService;
 import org.budgetanalyzer.permission.service.UserService;
 import org.budgetanalyzer.permission.service.dto.EffectivePermissions;
@@ -297,7 +298,8 @@ class UserPermissionControllerTest {
     @DisplayName("should deactivate user")
     void shouldDeactivateUser() throws Exception {
       // Arrange
-      var result = new UserDeactivationResult(TestConstants.TEST_USER_ID, "DEACTIVATED", 2, true);
+      var result =
+          new UserDeactivationResult(TestConstants.TEST_USER_ID, UserStatus.DEACTIVATED, 2, true);
       when(userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_ADMIN_ID))
           .thenReturn(result);
 

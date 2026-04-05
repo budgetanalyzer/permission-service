@@ -4,6 +4,8 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -35,8 +37,9 @@ public class User extends SoftDeletableEntity {
   @Column(name = "display_name")
   private String displayName;
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 20)
-  private String status = "ACTIVE";
+  private UserStatus status = UserStatus.ACTIVE;
 
   @Column(name = "deactivated_at")
   private Instant deactivatedAt;
@@ -85,7 +88,7 @@ public class User extends SoftDeletableEntity {
     this.displayName = displayName;
   }
 
-  public String getStatus() {
+  public UserStatus getStatus() {
     return status;
   }
 
@@ -99,12 +102,12 @@ public class User extends SoftDeletableEntity {
 
   /** Marks this user as deactivated, recording the actor and timestamp. */
   public void deactivate(String deactivatedBy) {
-    this.status = "DEACTIVATED";
+    this.status = UserStatus.DEACTIVATED;
     this.deactivatedAt = Instant.now();
     this.deactivatedBy = deactivatedBy;
   }
 
   public boolean isDeactivated() {
-    return "DEACTIVATED".equals(status);
+    return status == UserStatus.DEACTIVATED;
   }
 }

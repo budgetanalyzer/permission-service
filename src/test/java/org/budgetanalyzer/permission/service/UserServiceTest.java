@@ -25,6 +25,7 @@ import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.client.SessionRevocationResult;
 import org.budgetanalyzer.permission.domain.User;
+import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
@@ -77,7 +78,7 @@ class UserServiceTest {
 
       // Assert
       assertThat(result.userId()).isEqualTo(TestConstants.TEST_USER_ID);
-      assertThat(result.status()).isEqualTo("DEACTIVATED");
+      assertThat(result.status()).isEqualTo(UserStatus.DEACTIVATED);
       assertThat(result.rolesRemoved()).isEqualTo(2);
       assertThat(result.sessionsRevoked()).isTrue();
 
@@ -112,7 +113,7 @@ class UserServiceTest {
 
       // Assert
       assertThat(result.userId()).isEqualTo(TestConstants.TEST_USER_ID);
-      assertThat(result.status()).isEqualTo("DEACTIVATED");
+      assertThat(result.status()).isEqualTo(UserStatus.DEACTIVATED);
       assertThat(result.rolesRemoved()).isZero();
       assertThat(result.sessionsRevoked()).isTrue();
 

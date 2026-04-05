@@ -9,6 +9,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
+import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
@@ -131,5 +132,5 @@ public class UserService {
     return new PersistedUserDeactivation(user.getId(), user.getStatus(), rolesRemoved);
   }
 
-  private record PersistedUserDeactivation(String userId, String status, int rolesRemoved) {}
+  private record PersistedUserDeactivation(String userId, UserStatus status, int rolesRemoved) {}
 }
