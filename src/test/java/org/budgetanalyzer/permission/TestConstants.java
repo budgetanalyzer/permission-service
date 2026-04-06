@@ -14,9 +14,6 @@ public final class TestConstants {
   // Permissions
   public static final String PERM_USERS_READ = "users:read";
   public static final String PERM_USERS_WRITE = "users:write";
-  public static final String PERM_ROLES_READ = "roles:read";
-  public static final String PERM_ROLES_WRITE = "roles:write";
-  public static final String PERM_ROLES_DELETE = "roles:delete";
   public static final String PERM_AUDIT_READ = "audit:read";
 
   // Deactivation
