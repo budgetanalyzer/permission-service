@@ -84,7 +84,7 @@ Two default roles seeded via migration:
 | ADMIN | Full access | All 19 permissions |
 | USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write, statementformats:read |
 
-Custom roles can be created via the API. Role assignment requires `roles:write` permission.
+Roles are managed exclusively via Flyway migrations, not at runtime.
 
 ### Domain Model
 
@@ -122,8 +122,8 @@ Session revocation uses bounded retry with exponential backoff configured via `s
 ```
 org.budgetanalyzer.permission/
 ├── api/                    # REST controllers
-│   ├── request/           # Request DTOs
 │   └── response/          # Response DTOs
+├── client/                # Outbound HTTP clients
 ├── config/                # Configuration classes
 ├── domain/                # JPA entities
 ├── repository/            # JPA repositories
@@ -136,10 +136,9 @@ org.budgetanalyzer.permission/
 
 **Swagger UI:** http://localhost:8086/permission-service/swagger-ui.html
 
-**Key endpoint groups:**
-- `/v1/users` - User permissions and role assignments
-- `/v1/roles` - Role CRUD operations
-- `/internal/v1/users` - Internal endpoint for Session Gateway user sync and claims lookup
+**Endpoints (2 total):**
+- `POST /v1/users/{id}/deactivate` - User deactivation (admin)
+- `GET /internal/v1/users/{idpSub}/permissions` - Internal endpoint for Session Gateway user sync and claims lookup
 
 **Via API Gateway:** http://localhost:8080/permission-service/...
 
@@ -192,6 +191,9 @@ ls src/main/java/org/budgetanalyzer/permission/service/exception/
 ./gradlew test
 ```
 
+Repository integration tests use `PostgreSQLContainer`, so Docker must be available when running
+the full test suite.
+
 ## Testing
 
 **Patterns used:**
@@ -219,11 +221,6 @@ ls src/test/java/org/budgetanalyzer/permission/
 
 **Adding new permissions:**
 - When adding new permissions via migration, also update `ClaimsHeaderTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java` — add the new permission strings to the `ADMIN_PERMISSIONS` list and the `admin()` factory method so integration tests across all services reflect the correct admin claims shape.
-
-**Role assignment:**
-- Validate user and role exist before assignment
-- Throw `DuplicateRoleAssignmentException` if role already assigned
-- Hard delete on revocation (no temporal tracking)
 
 **Code style:**
 - Google Java Format enforced via Spotless

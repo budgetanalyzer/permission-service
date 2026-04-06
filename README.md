@@ -31,7 +31,7 @@ Data ownership is intentionally left as an exercise — see [orchestration docs]
 
 The Permission Service manages authorization data including:
 - Users (local records linked to identity provider via `idp_sub`)
-- Roles (2 defaults: ADMIN, USER; custom roles supported)
+- Roles (2 defaults: ADMIN, USER; managed via migrations)
 - Permissions (atomic definitions in `resource:action` format)
 - User-Role assignments (simple join table)
 - Role-Permission mappings (simple join table)
@@ -82,6 +82,10 @@ host defaults to `localhost:5432`. If you are reusing values from
 ./gradlew test
 ```
 
+Repository integration tests use Testcontainers-backed PostgreSQL, so Docker must be available
+when running the full test suite. `UserRoleRepositoryIntegrationTest` also runs Flyway migrations
+with Hibernate schema validation enabled against PostgreSQL rather than the shared H2 test setup.
+
 ## Database
 
 The service uses Flyway for database migrations. Migrations are located in:
@@ -103,36 +107,21 @@ Key tables:
 | ADMIN | Full access | All 16 permissions |
 | USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write |
 
-Custom roles can be created via the API. Role assignment requires `roles:write` permission.
+Roles are managed exclusively via Flyway migrations, not at runtime.
 
 ## API Endpoints
 
-### User Permissions (`/v1/users`)
+### User Administration (`/v1/users`)
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | `/v1/users/me/permissions` | Get current user's effective permissions | Authenticated |
-| GET | `/v1/users/{id}/permissions` | Get a user's effective permissions | `users:read` |
-| GET | `/v1/users/{id}/roles` | Get a user's roles | `users:read` or own ID |
-| POST | `/v1/users/{id}/roles` | Assign role to user | `roles:write` |
-| DELETE | `/v1/users/{id}/roles/{roleId}` | Revoke role from user | `roles:write` |
-
-### Roles (`/v1/roles`)
-
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| GET | `/v1/roles` | List all active roles | `roles:read` |
-| GET | `/v1/roles/{id}` | Get role by ID | `roles:read` |
-| POST | `/v1/roles` | Create new role | `roles:write` |
-| PUT | `/v1/roles/{id}` | Update role | `roles:write` |
-| DELETE | `/v1/roles/{id}` | Soft-delete role | `roles:delete` |
+| POST | `/v1/users/{id}/deactivate` | Deactivate user, remove roles, revoke sessions | `users:write` |
 
 ### Internal (`/internal/v1/users`)
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation, token exchange, and refresh | Service-owned path exception; ingress/mesh restricted |
-| POST | `/internal/v1/users/{userId}/deactivate` | Commit deactivation and role removal, then attempt session revocation | Service-owned path exception; ingress/mesh restricted |
 
 ## Architecture
 
