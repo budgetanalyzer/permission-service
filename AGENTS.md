@@ -81,8 +81,8 @@ Two default roles seeded via migration:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | All 24 permissions |
-| USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write, statementformats:read |
+| ADMIN | Full access | 14 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read/write/delete, currencies:read/write |
+| USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read, currencies:read |
 
 Roles are managed exclusively via Flyway migrations, not at runtime.
 
@@ -90,10 +90,39 @@ Roles are managed exclusively via Flyway migrations, not at runtime.
 
 The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
 scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
-Established by V5 for transactions (`transactions:read:any`, `transactions:write:any`,
-`transactions:delete:any`); future scoped permissions should follow the same pattern. Add
-scoped variants only when a controller actually needs cross-user code paths — do not
-pre-create them.
+Transactions currently use scoped variants (`transactions:read:any`, `transactions:write:any`,
+`transactions:delete:any`). `views:*` intentionally has no scoped `:any` variants yet; add
+them only when a controller actually needs cross-user saved-view access instead of granting
+the own-resource `views:*` permissions to ADMIN. Future scoped permissions should follow the
+same pattern and should not be pre-created.
+
+### Action Hierarchy (grant-time invariant)
+
+For any resource/scope, both `:write` and `:delete` require `:read`, but `:write` and
+`:delete` are **independent** of each other. Every role that holds `{resource}:write` must
+also hold `{resource}:read`, and every role that holds `{resource}:delete` must also hold
+`{resource}:read`. A role may legitimately hold `{read, write}` (editor, no destroy),
+`{read, delete}` (archivist, no modify), or `{read, write, delete}` (full access). The
+invariant runs within a scope — `:write:any` implies `:read:any` but says nothing about
+the unscoped `:write`. Downstream services and UIs rely on this so they can do literal
+permission checks (e.g. a route guard requiring `currencies:write` does not also need to
+check `currencies:read`).
+
+The invariant is **not** enforced in code. It is enforced by convention in Flyway migrations
+— the only grant surface in the system. When writing any migration that inserts into or
+deletes from `role_permissions`:
+
+- Inserting `{r}:write` → also insert `{r}:read` on the same role in the same migration.
+- Inserting `{r}:delete` → also insert `{r}:read` on the same role in the same migration.
+- Deleting `{r}:read` → first delete any `{r}:write` and `{r}:delete` the role holds.
+- Scoped (`:any`) grants follow the same rules within the scope.
+
+Note: inserting `{r}:write` does **not** require inserting `{r}:delete`, and inserting
+`{r}:delete` does **not** require inserting `{r}:write`. Only `:read` is mandatory alongside
+either.
+
+See [docs/authorization-model.md](docs/authorization-model.md#permission-action-hierarchy)
+for rationale and the reason a runtime expansion helper is explicitly rejected.
 
 ### Domain Model
 
@@ -231,6 +260,7 @@ ls src/test/java/org/budgetanalyzer/permission/
 **Modifying role permissions:**
 - Any migration that changes role-permission mappings (adding new permissions, granting an existing permission to a role, revoking one) **must** be followed by a reminder to the user to sync `ClaimsHeaderTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java`. That file hard-codes the per-role permission lists (e.g. `ADMIN_PERMISSIONS`) used by `admin()` / `user()` factories, and integration tests across every service will drift if it is not updated alongside the migration.
 - This repo cannot write to `service-common`, so always surface the required change explicitly when the work lands here — do not assume the user will remember.
+- Respect the action hierarchy described in "Action Hierarchy (grant-time invariant)" above: any grant of `{r}:write` or `{r}:delete` must also grant `{r}:read` on the same role (and the same scope). `:write` and `:delete` are independent — neither implies the other. Revocations run upward: remove `{r}:write` and `{r}:delete` before removing `{r}:read`. Downstream literal permission checks depend on this.
 
 **Code style:**
 - Google Java Format enforced via Spotless

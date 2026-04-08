@@ -21,8 +21,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.budgetanalyzer.permission.domain.Permission;
 
 /**
- * Verifies the shape of the Flyway-seeded data after V5. Asserts the expected permission count, the
- * new {@code transactions:*:any} rows, and the ADMIN/USER role-permission mappings.
+ * Verifies the consolidated Flyway seed data. Asserts the expected permission count, the
+ * transaction {@code :any} rows, and the ADMIN/USER role-permission mappings.
  */
 @DataJpaTest(
     properties = {
@@ -41,11 +41,15 @@ class SeedDataIntegrationTest {
   private static final String TRANSACTIONS_READ_ANY = "transactions:read:any";
   private static final String TRANSACTIONS_WRITE_ANY = "transactions:write:any";
   private static final String TRANSACTIONS_DELETE_ANY = "transactions:delete:any";
+  private static final String TRANSACTIONS_DELETE = "transactions:delete";
+  private static final String VIEWS_READ = "views:read";
+  private static final String VIEWS_WRITE = "views:write";
+  private static final String VIEWS_DELETE = "views:delete";
 
-  private static final int EXPECTED_TOTAL_PERMISSIONS = 24;
-  private static final int EXPECTED_ADMIN_PERMISSIONS = 24;
-  // V2 grants USER 6 permissions; V3 adds statementformats:read and currencies:read; V5
-  // intentionally does not change USER, so the post-V5 count is 8.
+  private static final int EXPECTED_TOTAL_PERMISSIONS = 17;
+  private static final int EXPECTED_ADMIN_PERMISSIONS = 14;
+  // USER gets transactions read/write/delete, views read/write/delete, statementformats:read, and
+  // currencies:read.
   private static final int EXPECTED_USER_PERMISSIONS = 8;
 
   @Container
@@ -96,11 +100,13 @@ class SeedDataIntegrationTest {
   class RolePermissionsTableTests {
 
     @Test
-    @DisplayName("ADMIN role bundles all 24 permissions")
-    void adminRoleBundlesAllPermissions() {
+    @DisplayName("ADMIN role bundles the 14 non-view permissions")
+    void adminRoleBundlesFourteenNonViewPermissions() {
       Long adminCount = countPermissionsForRole(ADMIN_ROLE_ID);
+      Set<String> adminPermissionIds = findPermissionIdsForRole(ADMIN_ROLE_ID);
 
       assertThat(adminCount).isEqualTo((long) EXPECTED_ADMIN_PERMISSIONS);
+      assertThat(adminPermissionIds).doesNotContain(VIEWS_READ, VIEWS_WRITE, VIEWS_DELETE);
     }
 
     @Test
@@ -113,13 +119,16 @@ class SeedDataIntegrationTest {
     }
 
     @Test
-    @DisplayName("USER role count is unchanged by V5 and excludes the cross-user variants")
-    void userRoleCountIsUnchangedByV5AndExcludesTheCrossUserVariants() {
+    @DisplayName(
+        "USER role has eight permissions including transactions delete and excludes the "
+            + "cross-user variants")
+    void userRoleHasEightPermissionsIncludingTransactionsDeleteAndExcludesTheCrossUserVariants() {
       Long userCount = countPermissionsForRole(USER_ROLE_ID);
       Set<String> userPermissionIds = findPermissionIdsForRole(USER_ROLE_ID);
 
       assertThat(userCount).isEqualTo((long) EXPECTED_USER_PERMISSIONS);
       assertThat(userPermissionIds)
+          .contains(TRANSACTIONS_DELETE, VIEWS_READ, VIEWS_WRITE, VIEWS_DELETE)
           .doesNotContain(TRANSACTIONS_READ_ANY, TRANSACTIONS_WRITE_ANY, TRANSACTIONS_DELETE_ANY);
     }
   }

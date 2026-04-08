@@ -104,20 +104,26 @@ Key tables:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | All 24 permissions |
-| USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write |
+| ADMIN | Full access | 14 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read/write/delete, currencies:read/write |
+| USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read, currencies:read |
 
 Roles are managed exclusively via Flyway migrations, not at runtime.
+
+Both bundles respect a grant-time action hierarchy: on any resource/scope, `:write` and `:delete` each require `:read`, but are independent of each other. Every role with `{r}:write` also holds `{r}:read`, and every role with `{r}:delete` also holds `{r}:read`; a role may legitimately hold `{read, write}`, `{read, delete}`, or `{read, write, delete}`. The invariant lets downstream services and UIs do literal permission checks — e.g. a route guard requiring `currencies:write` does not also need to check `currencies:read`. It is enforced by convention in migrations, not by runtime expansion. See [docs/authorization-model.md](docs/authorization-model.md#permission-action-hierarchy) for rationale.
 
 ### Scoped Permissions
 
 The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
 scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
-V5 introduced this convention with three admin-only permissions:
+This currently exists only for transactions:
 
 - `transactions:read:any`
 - `transactions:write:any`
 - `transactions:delete:any`
+
+`views:*` intentionally has no `:any` variants yet. If cross-user saved-view workflows are added
+later, add scoped `views:*:any` permissions instead of granting the own-resource `views:*`
+permissions to ADMIN.
 
 The authoritative description lives in
 `architecture-conversations/docs/plans/permission-based-authorization-cleanup.md`.
