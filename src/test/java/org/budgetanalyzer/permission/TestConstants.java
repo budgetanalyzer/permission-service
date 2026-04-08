@@ -14,7 +14,6 @@ public final class TestConstants {
   // Permissions
   public static final String PERM_USERS_READ = "users:read";
   public static final String PERM_USERS_WRITE = "users:write";
-  public static final String PERM_AUDIT_READ = "audit:read";
 
   // Deactivation
   public static final String TEST_DEACTIVATED_BY = TEST_ADMIN_ID;
