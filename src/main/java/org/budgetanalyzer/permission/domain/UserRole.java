@@ -9,7 +9,14 @@ import jakarta.persistence.Table;
 
 import org.budgetanalyzer.core.domain.AuditableEntity;
 
-/** Represents a role assignment to a user. Simple join table entity. */
+/**
+ * Represents a role assignment to a user. Simple join table entity.
+ *
+ * <p>Extends {@link AuditableEntity} (not {@link
+ * org.budgetanalyzer.core.domain.SoftDeletableEntity}) because no revocation flow exists: the row's
+ * presence is the grant. When a revocation flow is added, revisit this choice — see {@code
+ * docs/authorization-model.md} → "Deferred: grant/revocation audit trail".
+ */
 @Entity
 @Table(name = "user_roles")
 public class UserRole extends AuditableEntity {

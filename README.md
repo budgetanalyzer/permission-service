@@ -104,7 +104,7 @@ Key tables:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | 14 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read/write/delete, currencies:read/write |
+| ADMIN | Broad access | 13 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read/write, currencies:read/write |
 | USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read, currencies:read |
 
 Roles are managed exclusively via Flyway migrations, not at runtime.

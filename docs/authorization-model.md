@@ -41,11 +41,12 @@ INSERT INTO role_permissions (role_id, permission_id, ...) VALUES
   ...
 ```
 
-Today that bundle intentionally includes every non-`views:*` permission and excludes
-`views:read`, `views:write`, and `views:delete`. Those own-resource saved-view permissions stay
-USER-only until there is a real cross-user workflow that justifies scoped variants such as
-`views:read:any`. **This is a seed-data convention, not an enforced invariant.** Any new
-permission or bundle change must be reflected in `V2__seed_default_data.sql`.
+Today that bundle intentionally excludes all `views:*` permissions and also excludes
+`statementformats:delete`. Those own-resource saved-view permissions stay USER-only until there
+is a real cross-user workflow that justifies scoped variants such as `views:read:any`, and
+statement format management is intentionally limited to read/write. **This is a seed-data
+convention, not an enforced invariant.** Any new permission or bundle change must be reflected
+in `V2__seed_default_data.sql`.
 
 ## Invariants to preserve
 
@@ -81,7 +82,7 @@ The upside is concrete: downstream callers (Session Gateway, UI route guards, co
 
 The **single enforcement point** is Flyway migrations under `src/main/resources/db/migration/`. Specifically:
 
-- `V2__seed_default_data.sql` — the initial ADMIN and USER grants. Both bundles respect the hierarchy today: every `:write` and every `:delete` grant is accompanied by `:read`, including the `:any` scoped variants. The current bundles happen to hold `{read, write, delete}` together where they hold any modifying action, but that is a property of these particular bundles, not a requirement of the invariant.
+- `V2__seed_default_data.sql` — the initial ADMIN and USER grants. Both bundles respect the hierarchy today: every `:write` and every `:delete` grant is accompanied by `:read`, including the `:any` scoped variants. Some resources in the current bundles happen to hold `{read, write, delete}` together, but that is a property of those specific grants, not a requirement of the invariant.
 - Any future migration that inserts into `role_permissions` — the author must grant `{resource}:read` alongside any `{resource}:write` or `{resource}:delete` grant. This includes scoped variants: `{resource}:write:any` and `{resource}:delete:any` each require `{resource}:read:any` on the same role.
 - Any future migration that deletes from `role_permissions` — the author must revoke `{resource}:write` and `{resource}:delete` before or at the same time as removing `{resource}:read`, so the role never transiently holds a modifying action without read.
 
@@ -139,6 +140,19 @@ If the "limited admin" or "custom permission set per user" requirement ever surf
 3. **Scoped RBAC (RBAC + ABAC).** Keep coarse roles and add a scope attribute ("admin over tenant X", "admin over owned accounts"). Requires every downstream service to apply the scope when filtering queries. Matches the pattern used by AWS IAM, GCP IAM, Azure RBAC.
 4. **External policy engine (Cerbos / OPA / Oso / SpiceDB).** Move authorization decisions out of tables and into a rules engine. Warranted only at much larger scale.
 
+### Deferred: grant/revocation audit trail
+
+`UserRole` and `RolePermission` currently extend `AuditableEntity`, which means `createdAt`/`createdBy` capture when a grant was made but nothing captures when one is revoked — `repository.delete(...)` removes the row entirely. This is acceptable today because there is no revocation flow: no controller, no service method, no admin UI deletes these rows. Seed data in `V2__seed_default_data.sql` is the only writer.
+
+When a revocation flow is added, choose between:
+
+1. **Upgrade the join entities to `SoftDeletableEntity`.** Matches the pattern used by `User`, `Role`, and `Permission`. Cheapest option. Forces a decision on re-grant semantics: is re-granting a previously-revoked role a `restore()` of the old row, or a new row with a new `createdAt`? Both are defensible; pick one and document it.
+2. **Introduce a `permission_audit_log` table.** Append-only event table with `actor`, `action` (`GRANT` | `REVOKE`), `user_id`, `role_id` or `permission_id`, `timestamp`, `reason`. Join tables stay lean; all grant/revoke history becomes first-class records. Preferred if compliance questions ever enter the picture.
+
+Do not make this decision preemptively. Make it at the same time as the revocation flow — the flow's requirements (undo? audit queries? time-travel reporting?) will determine which option fits.
+
+**Why join tables are not soft-deletable today:** the row's existence *is* the business fact ("this user has this role"). With no revocation flow and no audit requirement, there is nothing for a `deleted=true` row to accomplish that an absent row does not already. Adding soft-delete columns now would be infrastructure without a consumer. See `service-common/docs/spring-boot-conventions.md` → Base Entity Classes → Choosing Between Them for the general rule.
+
 ### Explicitly rejected: snapshot-on-user-creation
 
 An earlier idea was to snapshot a role's permissions into a `user_permissions` table at user creation time, then let operators refine that snapshot. **This is not the chosen approach.** Failure modes:
@@ -152,7 +166,7 @@ If per-user exceptions are ever needed, use option 2 (additive delta) instead. I
 ## Quick reference
 
 - **Where permissions are defined:** `db/migration/V*.sql`
-- **Where ADMIN's 14-permission non-view bundle is defined:** `db/migration/V2__seed_default_data.sql`
+- **Where ADMIN's 13-permission non-view bundle is defined:** `db/migration/V2__seed_default_data.sql`
 - **Resolver query:** `UserRoleRepository.findPermissionIdsByUserId`
 - **DTO returned to downstream services:** `service/dto/EffectivePermissions.java` (fields: `roles`, `permissions`)
 - **UI rule of thumb:** roles for layouts, permissions for actions

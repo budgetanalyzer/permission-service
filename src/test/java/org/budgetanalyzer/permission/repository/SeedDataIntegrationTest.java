@@ -42,12 +42,13 @@ class SeedDataIntegrationTest {
   private static final String TRANSACTIONS_WRITE_ANY = "transactions:write:any";
   private static final String TRANSACTIONS_DELETE_ANY = "transactions:delete:any";
   private static final String TRANSACTIONS_DELETE = "transactions:delete";
+  private static final String STATEMENT_FORMATS_DELETE = "statementformats:delete";
   private static final String VIEWS_READ = "views:read";
   private static final String VIEWS_WRITE = "views:write";
   private static final String VIEWS_DELETE = "views:delete";
 
-  private static final int EXPECTED_TOTAL_PERMISSIONS = 17;
-  private static final int EXPECTED_ADMIN_PERMISSIONS = 14;
+  private static final int EXPECTED_TOTAL_PERMISSIONS = 16;
+  private static final int EXPECTED_ADMIN_PERMISSIONS = 13;
   // USER gets transactions read/write/delete, views read/write/delete, statementformats:read, and
   // currencies:read.
   private static final int EXPECTED_USER_PERMISSIONS = 8;
@@ -81,7 +82,10 @@ class SeedDataIntegrationTest {
     void containsExactlyTheExpectedNumberOfSeededPermissions() {
       List<Permission> permissions = permissionRepository.findAllByDeletedFalse();
 
-      assertThat(permissions).hasSize(EXPECTED_TOTAL_PERMISSIONS);
+      assertThat(permissions)
+          .hasSize(EXPECTED_TOTAL_PERMISSIONS)
+          .extracting(Permission::getId)
+          .doesNotContain(STATEMENT_FORMATS_DELETE);
     }
 
     @Test
@@ -100,13 +104,16 @@ class SeedDataIntegrationTest {
   class RolePermissionsTableTests {
 
     @Test
-    @DisplayName("ADMIN role bundles the 14 non-view permissions")
-    void adminRoleBundlesFourteenNonViewPermissions() {
+    @DisplayName(
+        "ADMIN role bundles the 13 non-view permissions while excluding saved views and "
+            + "statement format deletion")
+    void adminRoleBundlesThirteenNonViewPermissions() {
       Long adminCount = countPermissionsForRole(ADMIN_ROLE_ID);
       Set<String> adminPermissionIds = findPermissionIdsForRole(ADMIN_ROLE_ID);
 
       assertThat(adminCount).isEqualTo((long) EXPECTED_ADMIN_PERMISSIONS);
-      assertThat(adminPermissionIds).doesNotContain(VIEWS_READ, VIEWS_WRITE, VIEWS_DELETE);
+      assertThat(adminPermissionIds)
+          .doesNotContain(VIEWS_READ, VIEWS_WRITE, VIEWS_DELETE, STATEMENT_FORMATS_DELETE);
     }
 
     @Test

@@ -8,11 +8,11 @@ VALUES ('SYSTEM', 'system|internal', 'system@budgetanalyzer.local', 'System', CU
 -- Default roles: ADMIN and USER
 -- =============================================================================
 INSERT INTO roles (id, name, description, is_system, created_at, created_by) VALUES
-    ('ADMIN', 'Administrator', 'Full access to all resources and management operations', true, CURRENT_TIMESTAMP, 'SYSTEM'),
+    ('ADMIN', 'Administrator', 'Broad access to management operations and cross-user transaction administration', true, CURRENT_TIMESTAMP, 'SYSTEM'),
     ('USER', 'User', 'Standard access to own resources', true, CURRENT_TIMESTAMP, 'SYSTEM');
 
 -- =============================================================================
--- Default permissions (17)
+-- Default permissions (16)
 -- =============================================================================
 INSERT INTO permissions (id, name, resource_type, action, created_at, created_by) VALUES
     -- Transaction management
@@ -31,7 +31,6 @@ INSERT INTO permissions (id, name, resource_type, action, created_at, created_by
     -- Statement format management
     ('statementformats:read', 'Read Statement Formats', 'statementformat', 'read', CURRENT_TIMESTAMP, 'SYSTEM'),
     ('statementformats:write', 'Write Statement Formats', 'statementformat', 'write', CURRENT_TIMESTAMP, 'SYSTEM'),
-    ('statementformats:delete', 'Delete Statement Formats', 'statementformat', 'delete', CURRENT_TIMESTAMP, 'SYSTEM'),
 
     -- Currency management
     ('currencies:read', 'Read Currencies', 'currency', 'read', CURRENT_TIMESTAMP, 'SYSTEM'),
@@ -73,7 +72,7 @@ INSERT INTO permissions (id, name, resource_type, action, created_at, created_by
 -- =============================================================================
 
 -- =============================================================================
--- ADMIN gets the 14 non-view permissions
+-- ADMIN gets the 13 non-view permissions that exclude saved views and statement format deletion
 -- =============================================================================
 INSERT INTO role_permissions (role_id, permission_id, created_at, created_by) VALUES
     ('ADMIN', 'transactions:read', CURRENT_TIMESTAMP, 'SYSTEM'),
@@ -87,7 +86,6 @@ INSERT INTO role_permissions (role_id, permission_id, created_at, created_by) VA
     ('ADMIN', 'users:delete', CURRENT_TIMESTAMP, 'SYSTEM'),
     ('ADMIN', 'statementformats:read', CURRENT_TIMESTAMP, 'SYSTEM'),
     ('ADMIN', 'statementformats:write', CURRENT_TIMESTAMP, 'SYSTEM'),
-    ('ADMIN', 'statementformats:delete', CURRENT_TIMESTAMP, 'SYSTEM'),
     ('ADMIN', 'currencies:read', CURRENT_TIMESTAMP, 'SYSTEM'),
     ('ADMIN', 'currencies:write', CURRENT_TIMESTAMP, 'SYSTEM');
 
