@@ -104,10 +104,23 @@ Key tables:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | All 16 permissions |
+| ADMIN | Full access | All 24 permissions |
 | USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write |
 
 Roles are managed exclusively via Flyway migrations, not at runtime.
+
+### Scoped Permissions
+
+The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
+scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
+V5 introduced this convention with three admin-only permissions:
+
+- `transactions:read:any`
+- `transactions:write:any`
+- `transactions:delete:any`
+
+The authoritative description lives in
+`architecture-conversations/docs/plans/permission-based-authorization-cleanup.md`.
 
 ## API Endpoints
 

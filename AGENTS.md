@@ -81,10 +81,19 @@ Two default roles seeded via migration:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Full access | All 19 permissions |
+| ADMIN | Full access | All 24 permissions |
 | USER | Standard access | transactions:read/write, accounts:read/write, budgets:read/write, statementformats:read |
 
 Roles are managed exclusively via Flyway migrations, not at runtime.
+
+### Scoped Permissions
+
+The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
+scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
+Established by V5 for transactions (`transactions:read:any`, `transactions:write:any`,
+`transactions:delete:any`); future scoped permissions should follow the same pattern. Add
+scoped variants only when a controller actually needs cross-user code paths — do not
+pre-create them.
 
 ### Domain Model
 
@@ -219,8 +228,9 @@ ls src/test/java/org/budgetanalyzer/permission/
 - Exception: `InternalPermissionController#getUserPermissions` is protected by the narrow path rule (`/internal/v1/users/*/permissions`) in `PermissionServiceSecurityConfig` instead of method-level claims auth
 - Use `SecurityContextUtil` to get current user
 
-**Adding new permissions:**
-- When adding new permissions via migration, also update `ClaimsHeaderTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java` — add the new permission strings to the `ADMIN_PERMISSIONS` list and the `admin()` factory method so integration tests across all services reflect the correct admin claims shape.
+**Modifying role permissions:**
+- Any migration that changes role-permission mappings (adding new permissions, granting an existing permission to a role, revoking one) **must** be followed by a reminder to the user to sync `ClaimsHeaderTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java`. That file hard-codes the per-role permission lists (e.g. `ADMIN_PERMISSIONS`) used by `admin()` / `user()` factories, and integration tests across every service will drift if it is not updated alongside the migration.
+- This repo cannot write to `service-common`, so always surface the required change explicitly when the work lands here — do not assume the user will remember.
 
 **Code style:**
 - Google Java Format enforced via Spotless
