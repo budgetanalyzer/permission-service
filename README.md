@@ -138,6 +138,8 @@ The authoritative description lives in
 
 ## Architecture
 
+See [docs/authorization-model.md](docs/authorization-model.md) for the authoritative description of the role/permission data model, the rationale behind it, and the UI authorization guidance ("roles for layouts, permissions for actions").
+
 ### Soft Delete Strategy
 
 - **Users, Roles, Permissions**: Soft delete with `deleted` flag
