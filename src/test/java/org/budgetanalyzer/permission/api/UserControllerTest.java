@@ -25,11 +25,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import org.budgetanalyzer.permission.TestConstants;
+import org.budgetanalyzer.permission.api.response.UserReference;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.service.UserService;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
+import org.budgetanalyzer.permission.service.dto.UserDetail;
 import org.budgetanalyzer.permission.service.dto.UserWithRoles;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
@@ -137,10 +139,15 @@ class UserControllerTest {
     @DisplayName("should return user details with roles")
     void shouldReturnUserDetailsWithRoles() throws Exception {
       var user = createUser(TestConstants.TEST_USER_ID, TestConstants.TEST_EMAIL);
+      var adminUser = createAdminUser();
       user.deactivate(TestConstants.TEST_ADMIN_ID);
-      when(userService.getUserWithRoles(TestConstants.TEST_USER_ID))
+      when(userService.getUserDetail(TestConstants.TEST_USER_ID))
           .thenReturn(
-              new UserWithRoles(user, List.of(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER)));
+              new UserDetail(
+                  user,
+                  List.of(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER),
+                  UserReference.from(adminUser),
+                  null));
 
       mockMvc
           .perform(
@@ -153,13 +160,41 @@ class UserControllerTest {
           .andExpect(jsonPath("$.roleIds[0]").value(TestConstants.ROLE_ADMIN))
           .andExpect(jsonPath("$.roleIds[1]").value(TestConstants.ROLE_USER))
           .andExpect(jsonPath("$.status").value("DEACTIVATED"))
-          .andExpect(jsonPath("$.deactivatedBy").value(TestConstants.TEST_ADMIN_ID));
+          .andExpect(jsonPath("$.deactivatedBy.id").value(TestConstants.TEST_ADMIN_ID))
+          .andExpect(jsonPath("$.deactivatedBy.displayName").value("Admin User"))
+          .andExpect(jsonPath("$.deactivatedBy.email").value("admin@example.com"))
+          .andExpect(jsonPath("$.deletedBy").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("should return degraded actor reference when actor is unresolved")
+    void shouldReturnDegradedActorReferenceWhenActorIsUnresolved() throws Exception {
+      var user = createUser(TestConstants.TEST_USER_ID, TestConstants.TEST_EMAIL);
+      user.deactivate("usr_missing999");
+      when(userService.getUserDetail(TestConstants.TEST_USER_ID))
+          .thenReturn(
+              new UserDetail(
+                  user,
+                  List.of(TestConstants.ROLE_USER),
+                  new UserReference("usr_missing999", null, null),
+                  null));
+
+      mockMvc
+          .perform(
+              get("/v1/users/{id}", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_READ)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.deactivatedBy.id").value("usr_missing999"))
+          .andExpect(jsonPath("$.deactivatedBy.displayName").doesNotExist())
+          .andExpect(jsonPath("$.deactivatedBy.email").doesNotExist());
     }
 
     @Test
     @DisplayName("should return 404 when user not found")
     void shouldReturn404WhenUserNotFound() throws Exception {
-      when(userService.getUserWithRoles(TestConstants.TEST_USER_ID))
+      when(userService.getUserDetail(TestConstants.TEST_USER_ID))
           .thenThrow(
               new ResourceNotFoundException("User not found: " + TestConstants.TEST_USER_ID));
 
@@ -259,5 +294,13 @@ class UserControllerTest {
 
   private User createUser(String id, String email) {
     return new User(id, TestConstants.TEST_IDP_SUB, email, TestConstants.TEST_DISPLAY_NAME);
+  }
+
+  private User createAdminUser() {
+    return new User(
+        TestConstants.TEST_ADMIN_ID,
+        TestConstants.TEST_IDP_SUB_ADMIN,
+        "admin@example.com",
+        "Admin User");
   }
 }

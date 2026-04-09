@@ -104,8 +104,8 @@ public class UserController {
   @PreAuthorize("hasAuthority('users:read')")
   public UserDetailResponse getUser(
       @Parameter(description = "User ID", example = "usr_abc123") @PathVariable String id) {
-    var userWithRoles = userService.getUserWithRoles(id);
-    return UserDetailResponse.from(userWithRoles.user(), userWithRoles.roleIds());
+    var userDetail = userService.getUserDetail(id);
+    return UserDetailResponse.from(userDetail);
   }
 
   @Operation(

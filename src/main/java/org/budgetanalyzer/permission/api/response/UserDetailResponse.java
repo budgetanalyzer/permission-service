@@ -5,8 +5,8 @@ import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserStatus;
+import org.budgetanalyzer.permission.service.dto.UserDetail;
 
 /** Detailed response body for user administration views. */
 @Schema(description = "Detailed representation of a user")
@@ -25,33 +25,31 @@ public record UserDetailResponse(
         Instant updatedAt,
     @Schema(description = "Deactivation timestamp", example = "2026-04-08T12:00:00Z")
         Instant deactivatedAt,
-    @Schema(description = "User ID that deactivated the user", example = "usr_admin456")
-        String deactivatedBy,
+    @Schema(description = "User that deactivated the user") UserReference deactivatedBy,
     @Schema(description = "Soft-delete timestamp", example = "2026-04-09T12:00:00Z")
         Instant deletedAt,
-    @Schema(description = "User ID that soft-deleted the user", example = "usr_admin456")
-        String deletedBy) {
+    @Schema(description = "User that soft-deleted the user") UserReference deletedBy) {
 
   /**
-   * Creates a detail response from a user and their assigned role IDs.
+   * Creates a detail response from a resolved user detail projection.
    *
-   * @param user the user entity
-   * @param roleIds the assigned role IDs
+   * @param userDetail the resolved user detail
    * @return the detail response
    */
-  public static UserDetailResponse from(User user, List<String> roleIds) {
+  public static UserDetailResponse from(UserDetail userDetail) {
+    var user = userDetail.user();
     return new UserDetailResponse(
         user.getId(),
         user.getIdpSub(),
         user.getEmail(),
         user.getDisplayName(),
         user.getStatus(),
-        List.copyOf(roleIds),
+        List.copyOf(userDetail.roleIds()),
         user.getCreatedAt(),
         user.getUpdatedAt(),
         user.getDeactivatedAt(),
-        user.getDeactivatedBy(),
+        userDetail.deactivatedBy(),
         user.getDeletedAt(),
-        user.getDeletedBy());
+        userDetail.deletedBy());
   }
 }

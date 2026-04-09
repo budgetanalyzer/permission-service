@@ -2,7 +2,10 @@ package org.budgetanalyzer.permission.service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -14,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import org.budgetanalyzer.permission.api.request.UserFilter;
+import org.budgetanalyzer.permission.api.response.UserReference;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserStatus;
@@ -21,6 +25,7 @@ import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.repository.spec.UserSpecifications;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
+import org.budgetanalyzer.permission.service.dto.UserDetail;
 import org.budgetanalyzer.permission.service.dto.UserWithRoles;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
@@ -120,6 +125,35 @@ public class UserService {
   }
 
   /**
+   * Returns a non-deleted user by ID together with assigned role IDs and dereferenced audit actors.
+   *
+   * @param id the user ID
+   * @return the user detail projection
+   */
+  public UserDetail getUserDetail(String id) {
+    var user = getUser(id);
+    var actorIds = new LinkedHashSet<String>();
+    addActorIdIfNotSelf(actorIds, user.getDeactivatedBy(), user.getId());
+    addActorIdIfNotSelf(actorIds, user.getDeletedBy(), user.getId());
+
+    var actorReferencesById = Map.<String, UserReference>of();
+    if (!actorIds.isEmpty()) {
+      actorReferencesById =
+          userRepository.findAllById(actorIds).stream()
+              .collect(
+                  Collectors.toMap(
+                      User::getId, UserReference::from, (left, right) -> left, HashMap::new));
+    }
+
+    var roleIds = userRoleRepository.findRoleIdsByUserId(id).stream().sorted().toList();
+    return new UserDetail(
+        user,
+        roleIds,
+        resolveActorReference(user, user.getDeactivatedBy(), actorReferencesById),
+        resolveActorReference(user, user.getDeletedBy(), actorReferencesById));
+  }
+
+  /**
    * Soft-deletes a user and removes all role assignments.
    *
    * @param id the user ID
@@ -187,6 +221,25 @@ public class UserService {
     }
 
     return new PersistedUserDeactivation(user.getId(), user.getStatus(), rolesRemoved);
+  }
+
+  private void addActorIdIfNotSelf(LinkedHashSet<String> actorIds, String actorId, String userId) {
+    if (actorId != null && !actorId.equals(userId)) {
+      actorIds.add(actorId);
+    }
+  }
+
+  private UserReference resolveActorReference(
+      User user, String actorId, Map<String, UserReference> actorReferencesById) {
+    if (actorId == null) {
+      return null;
+    }
+
+    if (actorId.equals(user.getId())) {
+      return UserReference.from(user);
+    }
+
+    return actorReferencesById.getOrDefault(actorId, UserReference.ofIdOnly(actorId));
   }
 
   private record PersistedUserDeactivation(String userId, UserStatus status, int rolesRemoved) {}
