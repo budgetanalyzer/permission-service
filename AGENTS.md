@@ -145,9 +145,15 @@ tree src/main/java/org/budgetanalyzer/permission/domain
 2. Return `{ userId, roles, permissions }` for claims injection
 3. Bypass claims-header auth only for this narrow path (`/internal/v1/users/*/permissions`) via `PermissionServiceSecurityConfig`; orchestration still restricts callers with mesh identity and authorization policy
 
+### User Read Endpoints
+
+`GET /v1/users` — Admin UI search endpoint on `UserController`, protected by `@PreAuthorize("hasAuthority('users:read')")`. Returns paged users with filterable identity/status/timestamp fields plus assigned role IDs.
+
+`GET /v1/users/{id}` — Admin UI detail endpoint on `UserController`, protected by `@PreAuthorize("hasAuthority('users:read')")`. Returns one user's details, role IDs, and admin-forensics fields such as deactivation and soft-delete metadata.
+
 ### User Deactivation Endpoint
 
-`POST /v1/users/{id}/deactivate` — Admin UI action on `UserPermissionController`, protected by `@PreAuthorize("hasAuthority('users:write')")`. The actor identity comes from the security context (no request body).
+`POST /v1/users/{id}/deactivate` — Admin UI action on `UserController`, protected by `@PreAuthorize("hasAuthority('users:write')")`. The actor identity comes from the security context (no request body).
 
 **Response semantics:**
 - **200** — user deactivated and sessions revoked (returns `UserDeactivationResponse`)
@@ -160,11 +166,13 @@ Session revocation uses bounded retry with exponential backoff configured via `s
 ```
 org.budgetanalyzer.permission/
 ├── api/                    # REST controllers
+│   ├── request/           # Request/filter DTOs
 │   └── response/          # Response DTOs
 ├── client/                # Outbound HTTP clients
 ├── config/                # Configuration classes
 ├── domain/                # JPA entities
 ├── repository/            # JPA repositories
+│   └── spec/             # JPA specification builders
 └── service/               # Business logic
     ├── dto/               # Service-layer DTOs
     └── exception/         # Custom exceptions
@@ -174,7 +182,9 @@ org.budgetanalyzer.permission/
 
 **Swagger UI:** http://localhost:8086/permission-service/swagger-ui.html
 
-**Endpoints (2 total):**
+**Endpoints (4 total):**
+- `GET /v1/users` - Search users (admin)
+- `GET /v1/users/{id}` - Get user details (admin)
 - `POST /v1/users/{id}/deactivate` - User deactivation (admin)
 - `GET /internal/v1/users/{idpSub}/permissions` - Internal endpoint for Session Gateway user sync and claims lookup
 

@@ -134,6 +134,8 @@ The authoritative description lives in
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
+| GET | `/v1/users` | Search users with pagination, filtering, and sorting; includes role IDs per user | `users:read` |
+| GET | `/v1/users/{id}` | Get user by ID with role IDs plus dereferenced `deactivatedBy`/`deletedBy` actor objects (`id`, `displayName`, `email`) | `users:read` |
 | POST | `/v1/users/{id}/deactivate` | Deactivate user, remove roles, revoke sessions | `users:write` |
 
 ### Internal (`/internal/v1/users`)

@@ -1,5 +1,6 @@
 package org.budgetanalyzer.permission.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -16,6 +17,8 @@ import org.budgetanalyzer.permission.domain.UserRole;
 public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
 
   List<UserRole> findByUserId(String userId);
+
+  List<UserRole> findByUserIdIn(Collection<String> userIds);
 
   Optional<UserRole> findByUserIdAndRoleId(String userId, String roleId);
 

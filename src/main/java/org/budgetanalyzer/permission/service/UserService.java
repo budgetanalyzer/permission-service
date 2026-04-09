@@ -1,18 +1,33 @@
 package org.budgetanalyzer.permission.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import org.budgetanalyzer.permission.api.request.UserFilter;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
+import org.budgetanalyzer.permission.domain.UserRole;
 import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
+import org.budgetanalyzer.permission.repository.spec.UserSpecifications;
+import org.budgetanalyzer.permission.service.dto.UserActor;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
+import org.budgetanalyzer.permission.service.dto.UserDetail;
+import org.budgetanalyzer.permission.service.dto.UserWithRoles;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 
@@ -63,6 +78,83 @@ public class UserService {
   }
 
   /**
+   * Searches non-deleted users and batches role lookups for the current page.
+   *
+   * @param userFilter the user search filter
+   * @param pageable the requested page and sort options
+   * @return a page of users paired with assigned role IDs
+   */
+  public Page<UserWithRoles> search(UserFilter userFilter, Pageable pageable) {
+    var userPage =
+        userRepository.findAllNotDeleted(
+            UserSpecifications.withFilter(userFilter == null ? UserFilter.empty() : userFilter),
+            pageable);
+    var userIds = userPage.stream().map(User::getId).toList();
+
+    if (userIds.isEmpty()) {
+      return userPage.map(user -> new UserWithRoles(user, List.of()));
+    }
+
+    var rolesByUserId =
+        userRoleRepository.findByUserIdIn(userIds).stream()
+            .collect(
+                Collectors.groupingBy(
+                    UserRole::getUserId,
+                    Collectors.mapping(
+                        UserRole::getRoleId,
+                        Collectors.collectingAndThen(
+                            Collectors.toCollection(ArrayList::new),
+                            roleIds -> {
+                              roleIds.sort(Comparator.naturalOrder());
+                              return List.copyOf(roleIds);
+                            }))));
+
+    return userPage.map(
+        user -> new UserWithRoles(user, rolesByUserId.getOrDefault(user.getId(), List.of())));
+  }
+
+  /**
+   * Returns a non-deleted user by ID together with assigned role IDs.
+   *
+   * @param id the user ID
+   * @return the user and assigned role IDs
+   */
+  public UserWithRoles getUserWithRoles(String id) {
+    var user = getUser(id);
+    var roleIds = userRoleRepository.findRoleIdsByUserId(id).stream().sorted().toList();
+    return new UserWithRoles(user, roleIds);
+  }
+
+  /**
+   * Returns a non-deleted user by ID together with assigned role IDs and dereferenced audit actors.
+   *
+   * @param id the user ID
+   * @return the user detail projection
+   */
+  public UserDetail getUserDetail(String id) {
+    var user = getUser(id);
+    var actorIds = new LinkedHashSet<String>();
+    addActorIdIfNotSelf(actorIds, user.getDeactivatedBy(), user.getId());
+    addActorIdIfNotSelf(actorIds, user.getDeletedBy(), user.getId());
+
+    var userActorsById = Map.<String, UserActor>of();
+    if (!actorIds.isEmpty()) {
+      userActorsById =
+          userRepository.findAllById(actorIds).stream()
+              .collect(
+                  Collectors.toMap(
+                      User::getId, UserActor::from, (left, right) -> left, HashMap::new));
+    }
+
+    var roleIds = userRoleRepository.findRoleIdsByUserId(id).stream().sorted().toList();
+    return new UserDetail(
+        user,
+        roleIds,
+        resolveUserActor(user, user.getDeactivatedBy(), userActorsById),
+        resolveUserActor(user, user.getDeletedBy(), userActorsById));
+  }
+
+  /**
    * Soft-deletes a user and removes all role assignments.
    *
    * @param id the user ID
@@ -98,9 +190,9 @@ public class UserService {
                 transactionStatus -> persistUserDeactivation(userId, deactivatedBy)),
             "User deactivation transaction returned null");
 
-    var revocationResult = sessionGatewayClient.revokeUserSessions(userId);
+    var sessionRevocationResult = sessionGatewayClient.revokeUserSessions(userId);
 
-    if (!revocationResult.revoked()) {
+    if (!sessionRevocationResult.revoked()) {
       throw new ServiceUnavailableException(
           "User " + userId + " was deactivated but session revocation failed; retry is safe");
     }
@@ -130,6 +222,25 @@ public class UserService {
     }
 
     return new PersistedUserDeactivation(user.getId(), user.getStatus(), rolesRemoved);
+  }
+
+  private void addActorIdIfNotSelf(LinkedHashSet<String> actorIds, String actorId, String userId) {
+    if (actorId != null && !actorId.equals(userId)) {
+      actorIds.add(actorId);
+    }
+  }
+
+  private UserActor resolveUserActor(
+      User user, String actorId, Map<String, UserActor> userActorsById) {
+    if (actorId == null) {
+      return null;
+    }
+
+    if (actorId.equals(user.getId())) {
+      return UserActor.from(user);
+    }
+
+    return userActorsById.getOrDefault(actorId, UserActor.ofIdOnly(actorId));
   }
 
   private record PersistedUserDeactivation(String userId, UserStatus status, int rolesRemoved) {}

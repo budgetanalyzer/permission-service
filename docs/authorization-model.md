@@ -169,5 +169,6 @@ If per-user exceptions are ever needed, use option 2 (additive delta) instead. I
 - **Where ADMIN's 13-permission non-view bundle is defined:** `db/migration/V2__seed_default_data.sql`
 - **Resolver query:** `UserRoleRepository.findPermissionIdsByUserId`
 - **DTO returned to downstream services:** `service/dto/EffectivePermissions.java` (fields: `roles`, `permissions`)
+- **Admin user detail response shape:** `api/response/UserDetailResponse.java` (`deactivatedBy` and `deletedBy` are nullable `UserReference { id, displayName, email }` objects)
 - **UI rule of thumb:** roles for layouts, permissions for actions
 - **Action hierarchy rule of thumb:** both `:write` and `:delete` require `:read` on the same resource/scope; `:write` and `:delete` are independent of each other. Downstream checks stay literal.
