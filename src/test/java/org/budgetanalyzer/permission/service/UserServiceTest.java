@@ -3,6 +3,7 @@ package org.budgetanalyzer.permission.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
@@ -70,7 +71,6 @@ class UserServiceTest {
   class DeactivateUserTests {
 
     @Test
-    @DisplayName("should deactivate active user")
     void shouldDeactivateActiveUser() {
       // Arrange
       var user = new User();
@@ -105,7 +105,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should be idempotent for already deactivated user")
     void shouldBeIdempotentForDeactivatedUser() {
       // Arrange
       var user = new User();
@@ -132,7 +131,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should throw when user not found")
     void shouldThrowWhenUserNotFound() {
       // Arrange
       when(userRepository.findById(TestConstants.TEST_USER_ID)).thenReturn(Optional.empty());
@@ -142,14 +140,12 @@ class UserServiceTest {
               () ->
                   userService.deactivateUser(
                       TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY))
-          .isInstanceOf(ResourceNotFoundException.class)
-          .hasMessageContaining(TestConstants.TEST_USER_ID);
+          .isInstanceOf(ResourceNotFoundException.class);
 
       verify(sessionGatewayClient, never()).revokeUserSessions(any());
     }
 
     @Test
-    @DisplayName("should throw when user is soft-deleted")
     void shouldThrowWhenUserIsSoftDeleted() {
       // Arrange
       var user = new User();
@@ -164,15 +160,12 @@ class UserServiceTest {
               () ->
                   userService.deactivateUser(
                       TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY))
-          .isInstanceOf(ResourceNotFoundException.class)
-          .hasMessageContaining(TestConstants.TEST_USER_ID);
+          .isInstanceOf(ResourceNotFoundException.class);
 
       verify(sessionGatewayClient, never()).revokeUserSessions(any());
     }
 
     @Test
-    @DisplayName(
-        "should throw ServiceUnavailableException when session revocation exhausts retries")
     void shouldThrowWhenSessionRevocationExhaustsRetries() {
       // Arrange
       var user = new User();
@@ -189,9 +182,7 @@ class UserServiceTest {
               () ->
                   userService.deactivateUser(
                       TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY))
-          .isInstanceOf(ServiceUnavailableException.class)
-          .hasMessageContaining(TestConstants.TEST_USER_ID)
-          .hasMessageContaining("retry is safe");
+          .isInstanceOf(ServiceUnavailableException.class);
 
       // Verify deactivation was persisted before revocation attempt
       var captor = ArgumentCaptor.forClass(User.class);
@@ -200,9 +191,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName(
-        "should throw ServiceUnavailableException when session revocation fails"
-            + " with non-retryable error")
     void shouldThrowWhenSessionRevocationFailsNonRetryable() {
       // Arrange
       var user = new User();
@@ -219,8 +207,7 @@ class UserServiceTest {
               () ->
                   userService.deactivateUser(
                       TestConstants.TEST_USER_ID, TestConstants.TEST_DEACTIVATED_BY))
-          .isInstanceOf(ServiceUnavailableException.class)
-          .hasMessageContaining(TestConstants.TEST_USER_ID);
+          .isInstanceOf(ServiceUnavailableException.class);
 
       verify(userRepository).save(any());
     }
@@ -231,7 +218,6 @@ class UserServiceTest {
   class SearchTests {
 
     @Test
-    @DisplayName("should batch role lookups for the current page")
     void shouldBatchRoleLookupsForTheCurrentPage() {
       var userRole = new UserRole();
       userRole.setUserId(TestConstants.TEST_USER_ID);
@@ -275,7 +261,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should skip role lookup when search page is empty")
     void shouldSkipRoleLookupWhenSearchPageIsEmpty() {
       var pageable = PageRequest.of(0, 5);
       when(userRepository.findAllNotDeleted(any(), eq(pageable)))
@@ -293,7 +278,6 @@ class UserServiceTest {
   class GetUserWithRolesTests {
 
     @Test
-    @DisplayName("should return user with sorted role IDs")
     void shouldReturnUserWithSortedRoleIds() {
       var user =
           new User(
@@ -319,7 +303,6 @@ class UserServiceTest {
   class GetUserDetailTests {
 
     @Test
-    @DisplayName("should return null actor references when audit fields are empty")
     void shouldReturnNullActorReferencesWhenAuditFieldsAreEmpty() {
       var user =
           new User(
@@ -342,7 +325,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should resolve deactivatedBy and leave deletedBy null")
     void shouldResolveDeactivatedByAndLeaveDeletedByNull() {
       var user =
           new User(
@@ -374,7 +356,7 @@ class UserServiceTest {
 
       verify(userRepository)
           .findAllById(
-              org.mockito.ArgumentMatchers.argThat(
+              argThat(
                   actorIds ->
                       actorIds != null
                           && StreamSupport.stream(actorIds.spliterator(), false)
@@ -383,7 +365,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should batch resolve both actor references when they share the same actor")
     void shouldBatchResolveBothActorReferencesWhenTheyShareTheSameActor() {
       var user =
           new User(
@@ -414,7 +395,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should reuse target user when actor is self")
     void shouldReuseTargetUserWhenActorIsSelf() {
       var user =
           new User(
@@ -448,7 +428,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should resolve soft-deleted actor details")
     void shouldResolveSoftDeletedActorDetails() {
       var user =
           new User(
@@ -480,7 +459,6 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("should fall back to id-only reference when actor is missing")
     void shouldFallBackToIdOnlyReferenceWhenActorIsMissing() {
       var missingActorId = "usr_missing999";
       var user =

@@ -138,9 +138,12 @@ public class UserController {
     var deactivatedBy =
         SecurityContextUtil.getCurrentUserId()
             .orElseThrow(() -> new IllegalStateException("User ID not found in security context"));
-    var result = userService.deactivateUser(id, deactivatedBy);
+    var userDeactivationResult = userService.deactivateUser(id, deactivatedBy);
     return new UserDeactivationResponse(
-        result.userId(), result.status(), result.rolesRemoved(), result.sessionsRevoked());
+        userDeactivationResult.userId(),
+        userDeactivationResult.status(),
+        userDeactivationResult.rolesRemoved(),
+        userDeactivationResult.sessionsRevoked());
   }
 
   private void validateSortFields(Pageable pageable) {

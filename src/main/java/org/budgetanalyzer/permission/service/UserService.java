@@ -17,13 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import org.budgetanalyzer.permission.api.request.UserFilter;
-import org.budgetanalyzer.permission.api.response.UserReference;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
+import org.budgetanalyzer.permission.domain.UserRole;
 import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.repository.spec.UserSpecifications;
+import org.budgetanalyzer.permission.service.dto.UserActor;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
 import org.budgetanalyzer.permission.service.dto.UserDetail;
 import org.budgetanalyzer.permission.service.dto.UserWithRoles;
@@ -98,9 +99,9 @@ public class UserService {
         userRoleRepository.findByUserIdIn(userIds).stream()
             .collect(
                 Collectors.groupingBy(
-                    userRole -> userRole.getUserId(),
+                    UserRole::getUserId,
                     Collectors.mapping(
-                        userRole -> userRole.getRoleId(),
+                        UserRole::getRoleId,
                         Collectors.collectingAndThen(
                             Collectors.toCollection(ArrayList::new),
                             roleIds -> {
@@ -136,21 +137,21 @@ public class UserService {
     addActorIdIfNotSelf(actorIds, user.getDeactivatedBy(), user.getId());
     addActorIdIfNotSelf(actorIds, user.getDeletedBy(), user.getId());
 
-    var actorReferencesById = Map.<String, UserReference>of();
+    var userActorsById = Map.<String, UserActor>of();
     if (!actorIds.isEmpty()) {
-      actorReferencesById =
+      userActorsById =
           userRepository.findAllById(actorIds).stream()
               .collect(
                   Collectors.toMap(
-                      User::getId, UserReference::from, (left, right) -> left, HashMap::new));
+                      User::getId, UserActor::from, (left, right) -> left, HashMap::new));
     }
 
     var roleIds = userRoleRepository.findRoleIdsByUserId(id).stream().sorted().toList();
     return new UserDetail(
         user,
         roleIds,
-        resolveActorReference(user, user.getDeactivatedBy(), actorReferencesById),
-        resolveActorReference(user, user.getDeletedBy(), actorReferencesById));
+        resolveUserActor(user, user.getDeactivatedBy(), userActorsById),
+        resolveUserActor(user, user.getDeletedBy(), userActorsById));
   }
 
   /**
@@ -189,9 +190,9 @@ public class UserService {
                 transactionStatus -> persistUserDeactivation(userId, deactivatedBy)),
             "User deactivation transaction returned null");
 
-    var revocationResult = sessionGatewayClient.revokeUserSessions(userId);
+    var sessionRevocationResult = sessionGatewayClient.revokeUserSessions(userId);
 
-    if (!revocationResult.revoked()) {
+    if (!sessionRevocationResult.revoked()) {
       throw new ServiceUnavailableException(
           "User " + userId + " was deactivated but session revocation failed; retry is safe");
     }
@@ -229,17 +230,17 @@ public class UserService {
     }
   }
 
-  private UserReference resolveActorReference(
-      User user, String actorId, Map<String, UserReference> actorReferencesById) {
+  private UserActor resolveUserActor(
+      User user, String actorId, Map<String, UserActor> userActorsById) {
     if (actorId == null) {
       return null;
     }
 
     if (actorId.equals(user.getId())) {
-      return UserReference.from(user);
+      return UserActor.from(user);
     }
 
-    return actorReferencesById.getOrDefault(actorId, UserReference.ofIdOnly(actorId));
+    return userActorsById.getOrDefault(actorId, UserActor.ofIdOnly(actorId));
   }
 
   private record PersistedUserDeactivation(String userId, UserStatus status, int rolesRemoved) {}

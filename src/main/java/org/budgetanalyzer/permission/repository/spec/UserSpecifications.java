@@ -1,7 +1,6 @@
 package org.budgetanalyzer.permission.repository.spec;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
@@ -87,8 +86,8 @@ public final class UserSpecifications {
       return null;
     }
 
-    String[] words = filterValue.trim().split("\\s+");
-    List<Predicate> wordPredicates = new ArrayList<>();
+    var words = filterValue.trim().split("\\s+");
+    var wordPredicates = new ArrayList<Predicate>();
 
     for (var word : words) {
       if (!word.isBlank()) {

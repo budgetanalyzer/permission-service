@@ -3,6 +3,7 @@ package org.budgetanalyzer.permission.api.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import org.budgetanalyzer.permission.domain.User;
+import org.budgetanalyzer.permission.service.dto.UserActor;
 
 /** Compact reference to a user for audit fields on detail responses. */
 @Schema(description = "Dereferenced user identity for audit fields")
@@ -19,6 +20,16 @@ public record UserReference(
    */
   public static UserReference from(User user) {
     return new UserReference(user.getId(), user.getDisplayName(), user.getEmail());
+  }
+
+  /**
+   * Creates a reference from a service-layer actor.
+   *
+   * @param userActor the service-layer actor
+   * @return the user reference
+   */
+  public static UserReference from(UserActor userActor) {
+    return new UserReference(userActor.id(), userActor.displayName(), userActor.email());
   }
 
   /**

@@ -48,8 +48,8 @@ public record UserDetailResponse(
         user.getCreatedAt(),
         user.getUpdatedAt(),
         user.getDeactivatedAt(),
-        userDetail.deactivatedBy(),
+        userDetail.deactivatedBy() == null ? null : UserReference.from(userDetail.deactivatedBy()),
         user.getDeletedAt(),
-        userDetail.deletedBy());
+        userDetail.deletedBy() == null ? null : UserReference.from(userDetail.deletedBy()));
   }
 }

@@ -25,11 +25,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import org.budgetanalyzer.permission.TestConstants;
-import org.budgetanalyzer.permission.api.response.UserReference;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.service.UserService;
+import org.budgetanalyzer.permission.service.dto.UserActor;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
 import org.budgetanalyzer.permission.service.dto.UserDetail;
 import org.budgetanalyzer.permission.service.dto.UserWithRoles;
@@ -54,7 +54,6 @@ class UserControllerTest {
   class GetUsersTests {
 
     @Test
-    @DisplayName("should return paged users when filter and sort are valid")
     void shouldReturnPagedUsersWhenFilterAndSortAreValid() throws Exception {
       var firstUser = createUser(TestConstants.TEST_USER_ID, TestConstants.TEST_EMAIL);
       var secondUser = createUser("usr_second789", "admin@example.com");
@@ -105,7 +104,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 400 when sort field is invalid")
     void shouldReturn400WhenSortFieldIsInvalid() throws Exception {
       mockMvc
           .perform(
@@ -121,7 +119,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 403 when lacking users read permission")
     void shouldReturn403WhenLackingUsersReadPermission() throws Exception {
       mockMvc
           .perform(
@@ -136,7 +133,6 @@ class UserControllerTest {
   class GetUserTests {
 
     @Test
-    @DisplayName("should return user details with roles")
     void shouldReturnUserDetailsWithRoles() throws Exception {
       var user = createUser(TestConstants.TEST_USER_ID, TestConstants.TEST_EMAIL);
       var adminUser = createAdminUser();
@@ -146,7 +142,7 @@ class UserControllerTest {
               new UserDetail(
                   user,
                   List.of(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER),
-                  UserReference.from(adminUser),
+                  UserActor.from(adminUser),
                   null));
 
       mockMvc
@@ -167,7 +163,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return degraded actor reference when actor is unresolved")
     void shouldReturnDegradedActorReferenceWhenActorIsUnresolved() throws Exception {
       var user = createUser(TestConstants.TEST_USER_ID, TestConstants.TEST_EMAIL);
       user.deactivate("usr_missing999");
@@ -176,7 +171,7 @@ class UserControllerTest {
               new UserDetail(
                   user,
                   List.of(TestConstants.ROLE_USER),
-                  new UserReference("usr_missing999", null, null),
+                  new UserActor("usr_missing999", null, null),
                   null));
 
       mockMvc
@@ -192,7 +187,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 404 when user not found")
     void shouldReturn404WhenUserNotFound() throws Exception {
       when(userService.getUserDetail(TestConstants.TEST_USER_ID))
           .thenThrow(
@@ -209,7 +203,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 403 when lacking users read permission")
     void shouldReturn403WhenLackingUsersReadPermission() throws Exception {
       mockMvc
           .perform(
@@ -224,7 +217,6 @@ class UserControllerTest {
   class DeactivateUserTests {
 
     @Test
-    @DisplayName("should deactivate user")
     void shouldDeactivateUser() throws Exception {
       var result =
           new UserDeactivationResult(TestConstants.TEST_USER_ID, UserStatus.DEACTIVATED, 2, true);
@@ -245,7 +237,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 404 when user not found")
     void shouldReturn404WhenUserNotFound() throws Exception {
       when(userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_ADMIN_ID))
           .thenThrow(
@@ -262,7 +253,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 403 when lacking permission")
     void shouldReturn403WhenLackingPermission() throws Exception {
       mockMvc
           .perform(
@@ -272,7 +262,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("should return 503 when session revocation fails")
     void shouldReturn503WhenSessionRevocationFails() throws Exception {
       when(userService.deactivateUser(TestConstants.TEST_USER_ID, TestConstants.TEST_ADMIN_ID))
           .thenThrow(
