@@ -127,7 +127,7 @@ for rationale and the reason a runtime expansion helper is explicitly rejected.
 ### Domain Model
 
 **Core entities (5 tables):**
-- `User` - Local record linked to identity provider via `idp_sub`
+- `User` - Local record linked to identity provider via `idp_sub`; `email` is mutable IdP-owned profile data and is not unique among active users
 - `Role` - Role definitions (soft-deletable)
 - `Permission` - Atomic permissions in `resource:action` format
 - `UserRole` - Simple user-role join table

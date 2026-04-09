@@ -21,14 +21,15 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_idp_sub ON users(idp_sub) WHERE deleted = false;
 CREATE INDEX idx_users_idp_sub_status ON users(idp_sub, status);
+-- Email stays indexed for admin search/filtering but is not a local identity key.
 CREATE INDEX idx_users_email ON users(email) WHERE deleted = false;
--- Partial unique indexes to allow reuse after soft delete
+-- Partial unique index to allow idp_sub reuse after soft delete.
 CREATE UNIQUE INDEX users_idp_sub_active ON users(idp_sub) WHERE deleted = false;
-CREATE UNIQUE INDEX users_email_active ON users(email) WHERE deleted = false;
 
 COMMENT ON TABLE users IS 'Local user records linked to an identity provider for authorization';
 COMMENT ON COLUMN users.id IS 'Internal user ID (e.g., usr_xxx)';
 COMMENT ON COLUMN users.idp_sub IS 'Identity provider subject identifier (OIDC sub claim, provider-agnostic)';
+COMMENT ON COLUMN users.email IS 'Mutable IdP-owned profile field for search/display; not a local identity key';
 COMMENT ON COLUMN users.status IS 'User access control state: ACTIVE, DEACTIVATED';
 COMMENT ON COLUMN users.deactivated_at IS 'Timestamp when user was deactivated';
 COMMENT ON COLUMN users.deactivated_by IS 'User ID who triggered deactivation';
