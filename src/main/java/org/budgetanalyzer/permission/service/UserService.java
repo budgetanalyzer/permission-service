@@ -1,17 +1,25 @@
 package org.budgetanalyzer.permission.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import org.budgetanalyzer.permission.api.request.UserFilter;
 import org.budgetanalyzer.permission.client.SessionGatewayClient;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
+import org.budgetanalyzer.permission.repository.spec.UserSpecifications;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
@@ -60,6 +68,54 @@ public class UserService {
     return userRepository
         .findByIdNotDeleted(id)
         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+  }
+
+  /**
+   * Searches non-deleted users and batches role lookups for the current page.
+   *
+   * @param userFilter the user search filter
+   * @param pageable the requested page and sort options
+   * @return a page of users paired with assigned role IDs
+   */
+  public Page<UserWithRoles> search(UserFilter userFilter, Pageable pageable) {
+    var userPage =
+        userRepository.findAllNotDeleted(
+            UserSpecifications.withFilter(userFilter == null ? UserFilter.empty() : userFilter),
+            pageable);
+    var userIds = userPage.stream().map(User::getId).toList();
+
+    if (userIds.isEmpty()) {
+      return userPage.map(user -> new UserWithRoles(user, List.of()));
+    }
+
+    var rolesByUserId =
+        userRoleRepository.findByUserIdIn(userIds).stream()
+            .collect(
+                Collectors.groupingBy(
+                    userRole -> userRole.getUserId(),
+                    Collectors.mapping(
+                        userRole -> userRole.getRoleId(),
+                        Collectors.collectingAndThen(
+                            Collectors.toCollection(ArrayList::new),
+                            roleIds -> {
+                              roleIds.sort(Comparator.naturalOrder());
+                              return List.copyOf(roleIds);
+                            }))));
+
+    return userPage.map(
+        user -> new UserWithRoles(user, rolesByUserId.getOrDefault(user.getId(), List.of())));
+  }
+
+  /**
+   * Returns a non-deleted user by ID together with assigned role IDs.
+   *
+   * @param id the user ID
+   * @return the user and assigned role IDs
+   */
+  public UserWithRoles getUserWithRoles(String id) {
+    var user = getUser(id);
+    var roleIds = userRoleRepository.findRoleIdsByUserId(id).stream().sorted().toList();
+    return new UserWithRoles(user, roleIds);
   }
 
   /**
@@ -130,6 +186,20 @@ public class UserService {
     }
 
     return new PersistedUserDeactivation(user.getId(), user.getStatus(), rolesRemoved);
+  }
+
+  /** User paired with the role IDs assigned to that user. */
+  public record UserWithRoles(User user, List<String> roleIds) {
+
+    /**
+     * Creates an immutable user-with-roles projection.
+     *
+     * @param user the user entity
+     * @param roleIds the assigned role IDs
+     */
+    public UserWithRoles {
+      roleIds = List.copyOf(roleIds);
+    }
   }
 
   private record PersistedUserDeactivation(String userId, UserStatus status, int rolesRemoved) {}

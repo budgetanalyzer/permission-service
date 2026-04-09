@@ -134,6 +134,8 @@ The authoritative description lives in
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
+| GET | `/v1/users` | Search users | `users:read` |
+| GET | `/v1/users/{id}` | Get user by ID | `users:read` |
 | POST | `/v1/users/{id}/deactivate` | Deactivate user, remove roles, revoke sessions | `users:write` |
 
 ### Internal (`/internal/v1/users`)
