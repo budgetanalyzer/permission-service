@@ -21,6 +21,7 @@ import org.budgetanalyzer.permission.repository.UserRepository;
 import org.budgetanalyzer.permission.repository.UserRoleRepository;
 import org.budgetanalyzer.permission.repository.spec.UserSpecifications;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
+import org.budgetanalyzer.permission.service.dto.UserWithRoles;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 
@@ -186,20 +187,6 @@ public class UserService {
     }
 
     return new PersistedUserDeactivation(user.getId(), user.getStatus(), rolesRemoved);
-  }
-
-  /** User paired with the role IDs assigned to that user. */
-  public record UserWithRoles(User user, List<String> roleIds) {
-
-    /**
-     * Creates an immutable user-with-roles projection.
-     *
-     * @param user the user entity
-     * @param roleIds the assigned role IDs
-     */
-    public UserWithRoles {
-      roleIds = List.copyOf(roleIds);
-    }
   }
 
   private record PersistedUserDeactivation(String userId, UserStatus status, int rolesRemoved) {}

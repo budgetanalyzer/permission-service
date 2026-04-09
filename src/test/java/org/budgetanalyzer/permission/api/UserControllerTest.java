@@ -30,6 +30,7 @@ import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.domain.UserStatus;
 import org.budgetanalyzer.permission.service.UserService;
 import org.budgetanalyzer.permission.service.dto.UserDeactivationResult;
+import org.budgetanalyzer.permission.service.dto.UserWithRoles;
 import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 import org.budgetanalyzer.service.security.ClaimsHeaderSecurityConfig;
@@ -59,8 +60,8 @@ class UserControllerTest {
       var page =
           new PageImpl<>(
               List.of(
-                  new UserService.UserWithRoles(firstUser, List.of(TestConstants.ROLE_USER)),
-                  new UserService.UserWithRoles(
+                  new UserWithRoles(firstUser, List.of(TestConstants.ROLE_USER)),
+                  new UserWithRoles(
                       secondUser, List.of(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER))),
               pageable,
               7);
@@ -139,8 +140,7 @@ class UserControllerTest {
       user.deactivate(TestConstants.TEST_ADMIN_ID);
       when(userService.getUserWithRoles(TestConstants.TEST_USER_ID))
           .thenReturn(
-              new UserService.UserWithRoles(
-                  user, List.of(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER)));
+              new UserWithRoles(user, List.of(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER)));
 
       mockMvc
           .perform(

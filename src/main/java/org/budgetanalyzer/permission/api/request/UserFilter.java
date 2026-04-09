@@ -12,10 +12,16 @@ import org.budgetanalyzer.permission.domain.UserStatus;
 @Schema(description = "Filter for querying users by various fields")
 public record UserFilter(
     @Schema(description = "Unique identifier for the user", example = "usr_abc123") String id,
-    @Schema(description = "Email address to match", example = "admin@example.com") String email,
-    @Schema(description = "Display name text to match", example = "Admin User") String displayName,
     @Schema(
-            description = "Identity provider subject identifier",
+            description = "Email address (case-insensitive LIKE, multi-word OR)",
+            example = "admin@example.com")
+        String email,
+    @Schema(
+            description = "Display name (case-insensitive LIKE, multi-word OR)",
+            example = "Admin User")
+        String displayName,
+    @Schema(
+            description = "Identity provider subject identifier (exact match)",
             example = "auth0|67fd70c38eb9d43f1c93ea44")
         String idpSub,
     @Schema(
