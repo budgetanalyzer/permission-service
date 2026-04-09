@@ -16,9 +16,10 @@ import org.budgetanalyzer.permission.service.exception.UserDeactivatedException;
 /**
  * Service for synchronizing users with an identity provider.
  *
- * <p>Handles user creation and updates based on identity provider authentication data. This service
- * is provider-agnostic — it accepts any OIDC {@code sub} claim. The current deployment uses Auth0,
- * but no Auth0-specific logic exists here.
+ * <p>Handles user creation and updates based on identity provider authentication data.
+ *
+ * <p>This service is provider-agnostic — it accepts any OIDC {@code sub} claim. The current
+ * deployment uses Auth0, but no Auth0-specific logic exists here.
  */
 @Service
 @Transactional
@@ -50,7 +51,8 @@ public class UserSyncService {
    * Syncs a user from identity provider data, creating or updating as needed.
    *
    * <p>On first login the user is created and assigned the default USER role. On subsequent logins,
-   * email and display name are updated.
+   * email and display name are updated. Synchronization is keyed by {@code idpSub}; email and
+   * display name are mutable profile fields, not local identity keys.
    *
    * @param idpSub the identity provider subject identifier
    * @param email the user's email address

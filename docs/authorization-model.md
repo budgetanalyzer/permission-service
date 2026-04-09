@@ -18,7 +18,20 @@ users ──< user_roles >── roles ──< role_permissions >── permissi
 - `permissions` (`domain/Permission.java`): atomic `resource:action` strings (e.g. `transactions:read`). Permissions are the unit of authority checked by downstream services.
 - `role_permissions` (`domain/RolePermission.java`): join rows. A role is defined by its set of join rows — nothing else.
 - `user_roles` (`domain/UserRole.java`): join rows. `UNIQUE(user_id, role_id)` only — a user can hold multiple roles.
-- `users` (`domain/User.java`): the subject. No direct permission columns.
+- `users` (`domain/User.java`): the subject. No direct permission columns. `id` is the canonical
+  internal identifier, `idp_sub` is the stable external identity binding, and `email` /
+  `display_name` are mutable IdP-owned profile fields.
+
+## User identity model
+
+The user identity contract is intentionally narrow:
+
+- `users.id` is the canonical internal identifier used across service boundaries
+- `users.idp_sub` is the stable external binding used to sync login-time identity data
+- `users.email` is profile data for search/display, not a local identity key
+
+Active users may therefore share the same email locally. Admin search may filter by email, but any
+feature that needs to identify a single user must use `id` or `idp_sub`.
 
 Resolution happens in one query, `UserRoleRepository.findPermissionIdsByUserId`:
 

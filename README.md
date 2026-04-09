@@ -37,6 +37,9 @@ The Permission Service manages authorization data including:
 - Role-Permission mappings (simple join table)
 
 The `idp_sub` field stores the OIDC `sub` claim from any compliant identity provider. This is intentionally provider-agnostic to avoid identity provider lock-in — the current deployment uses Auth0, but no Auth0-specific logic exists in the codebase.
+User synchronization is keyed by `idp_sub`; `email` and `display_name` are mutable IdP-owned
+profile fields. Active users may share the same email locally, and email remains indexed only for
+admin search/filtering rather than identity resolution.
 
 ## Configuration
 
@@ -83,8 +86,9 @@ host defaults to `localhost:5432`. If you are reusing values from
 ```
 
 Repository integration tests use Testcontainers-backed PostgreSQL, so Docker must be available
-when running the full test suite. `UserRoleRepositoryIntegrationTest` also runs Flyway migrations
-with Hibernate schema validation enabled against PostgreSQL rather than the shared H2 test setup.
+when running the full test suite. `UserRoleRepositoryIntegrationTest` and
+`UserIdentityIntegrationTest` both run Flyway migrations with Hibernate schema validation enabled
+against PostgreSQL rather than the shared H2 test setup.
 
 ## Database
 
@@ -99,6 +103,10 @@ Key tables:
 - `permissions` — Atomic permission definitions in `resource:action` format
 - `user_roles` — Simple user-role join table
 - `role_permissions` — Simple role-permission join table
+
+For the `users` table, `idp_sub` is the stable external identity binding and `id` is the
+canonical internal identifier. `email` is stored for search/display but is not unique among active
+users.
 
 ### Default Roles
 
