@@ -1,5 +1,8 @@
 import org.springframework.boot.gradle.tasks.run.BootRun
 
+val githubPackagesActor = providers.environmentVariable("GITHUB_ACTOR")
+val githubPackagesToken = providers.environmentVariable("GITHUB_TOKEN")
+
 plugins {
     java
     checkstyle
@@ -19,6 +22,17 @@ java {
 
 repositories {
     mavenLocal()
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/budgetanalyzer/service-common")
+        credentials {
+            username = githubPackagesActor.orNull ?: ""
+            password = githubPackagesToken.orNull ?: ""
+        }
+        content {
+            includeGroup("org.budgetanalyzer")
+        }
+    }
     mavenCentral()
 }
 

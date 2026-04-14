@@ -55,6 +55,15 @@ admin search/filtering rather than identity resolution.
 - PostgreSQL database named `permission`
 - OIDC identity provider configured (issuer URI, audience)
 
+**Local development setup**: See [getting-started.md](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md)
+
+**Service-common artifact resolution**: The supported contributor path is the
+side-by-side orchestration/Tilt flow. `mavenLocal()` stays first for local
+development, so this should not require `GITHUB_ACTOR` or `GITHUB_TOKEN`. For
+GitHub Actions/release or other intentional isolated builds that resolve the
+published `service-common` artifacts remotely, see
+[service-common-artifact-resolution.md](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/service-common-artifact-resolution.md).
+
 ## Development
 
 ### Build

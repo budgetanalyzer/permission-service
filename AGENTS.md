@@ -242,6 +242,11 @@ ls src/main/java/org/budgetanalyzer/permission/service/exception/
 Repository integration tests use `PostgreSQLContainer`, so Docker must be available when running
 the full test suite.
 
+For local development, `mavenLocal()` stays first so a freshly published local
+`service-common` still works. For release-version or isolated builds that
+intentionally resolve the remote published `service-common` artifacts, see
+[orchestration/docs/development/service-common-artifact-resolution.md](../orchestration/docs/development/service-common-artifact-resolution.md).
+
 ## Testing
 
 **Patterns used:**
