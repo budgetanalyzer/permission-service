@@ -33,9 +33,9 @@ NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read di
 Always keep documentation up to date after any configuration or code change.
 
 Update the nearest affected documentation in the same work:
-- `AGENTS.md` when instructions, guardrails, discovery commands, or repository-specific workflow changes
+- `AGENTS.md` when instructions, guardrails, or discovery commands change
 - `README.md` when setup, usage, or repository purpose changes
-- `docs/` when architecture, configuration, APIs, behaviors, or operational workflows change
+- `docs/` when architecture, configuration, APIs, behaviors, or operating procedures change
 
 Do not leave documentation updates as follow-up work.
 
@@ -247,10 +247,9 @@ For local development, `mavenLocal()` stays first so a freshly published local
 intentionally resolve the remote published `service-common` artifacts, see
 [orchestration/docs/development/service-common-artifact-resolution.md](../orchestration/docs/development/service-common-artifact-resolution.md).
 
-Tagged GHCR releases use `.github/workflows/publish-release.yml`. That workflow
-passes `SERVICE_COMMON_PACKAGES_USERNAME` and
+Tagged GHCR releases pass `SERVICE_COMMON_PACKAGES_USERNAME` and
 `SERVICE_COMMON_PACKAGES_READ_TOKEN` into BuildKit for remote
-`service-common` resolution, but it does not change the local
+`service-common` resolution, but that does not change the local
 `publishToMavenLocal` plus `tilt up` contributor path.
 
 ## Testing
@@ -287,7 +286,7 @@ ls src/test/java/org/budgetanalyzer/permission/
 - Google Java Format enforced via Spotless
 - Run `./gradlew spotlessApply` before committing
 
-**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git workflow entirely. You may suggest what to commit, but don't do it.
+**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git operations entirely. You may suggest what to commit, but don't do it.
 
 ## Web Search Protocol
 
