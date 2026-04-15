@@ -242,15 +242,9 @@ ls src/main/java/org/budgetanalyzer/permission/service/exception/
 Repository integration tests use `PostgreSQLContainer`, so Docker must be available when running
 the full test suite.
 
-For local development, `mavenLocal()` stays first so a freshly published local
-`service-common` still works. For release-version or isolated builds that
-intentionally resolve the remote published `service-common` artifacts, see
+For CI/release `service-common` artifact resolution, use the single source of
+truth in
 [orchestration/docs/development/service-common-artifact-resolution.md](../orchestration/docs/development/service-common-artifact-resolution.md).
-
-Tagged GHCR releases pass `SERVICE_COMMON_PACKAGES_USERNAME` and
-`SERVICE_COMMON_PACKAGES_READ_TOKEN` into BuildKit for remote
-`service-common` resolution, but that does not change the local
-`publishToMavenLocal` plus `tilt up` contributor path.
 
 ## Testing
 
