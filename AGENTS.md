@@ -10,7 +10,6 @@
 - **Consumes**: service-common (patterns)
 - **Coordinated by**: orchestration
 - **Peers with**: Discover via `ls /workspace/*-service`
-- **Observed by**: architecture-conversations
 
 ### Permissions
 - **Read**: `../service-common/`, `../orchestration/docs/`
@@ -291,10 +290,6 @@ BEFORE any WebSearch tool call:
 4. NEVER use previous years unless explicitly searching historical content
 
 FAILURE MODE: Training data defaults to 2023/2024. Override with `<env>` year.
-
-## Conversation Capture
-
-When the user asks to save this conversation, write it to `/workspace/architecture-conversations/conversations/` following the format in INDEX.md.
 
 ---
 

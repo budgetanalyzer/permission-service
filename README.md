@@ -142,7 +142,7 @@ later, add scoped `views:*:any` permissions instead of granting the own-resource
 permissions to ADMIN.
 
 The authoritative description lives in
-`architecture-conversations/docs/plans/permission-based-authorization-cleanup.md`.
+[docs/authorization-model.md](docs/authorization-model.md).
 
 ## API Endpoints
 
