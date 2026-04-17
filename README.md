@@ -20,13 +20,6 @@ authorization policy, not by a shared `/internal/**` rule in `service-common`.
 - Provides RBAC with simple role-permission mappings
 - Exposes an internal endpoint for Session Gateway to sync users and resolve roles/permissions before it writes the Redis session hash
 
-**What this service does NOT solve:**
-- Data ownership: "Which transactions belong to which user?"
-- Cross-service user scoping
-- Multi-tenancy / organization isolation
-
-Data ownership is intentionally left as an exercise — see [orchestration docs](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/system-overview.md#intentional-boundaries) for why.
-
 ## Overview
 
 The Permission Service manages authorization data including:
