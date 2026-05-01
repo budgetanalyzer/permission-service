@@ -70,19 +70,6 @@ against PostgreSQL rather than the shared H2 test setup.
 The service uses Flyway for database migrations. Migrations are located in:
 - `src/main/resources/db/migration/`
 
-### Schema
-
-Key tables:
-- `users` — Local user records linked to identity provider via `idp_sub`
-- `roles` — Role definitions (soft-deletable)
-- `permissions` — Atomic permission definitions in `resource:action` format
-- `user_roles` — Simple user-role join table
-- `role_permissions` — Simple role-permission join table
-
-For the `users` table, `idp_sub` is the stable external identity binding and `id` is the
-canonical internal identifier. `email` is stored for search/display but is not unique among active
-users.
-
 ### Default Roles
 
 Two default roles (ADMIN, USER) are managed exclusively via Flyway migrations, not at runtime. See [docs/authorization-model.md](docs/authorization-model.md) for the full permission matrix, scoped permissions, and action hierarchy rationale.
