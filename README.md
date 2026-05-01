@@ -6,33 +6,7 @@
 
 [![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint Session Gateway uses during login, token exchange, and heartbeat-driven refresh.
-
-The internal permissions endpoint is a service-owned security exception: it does not require
-claims headers in the application because Session Gateway calls it before user claims exist.
-Caller restriction for that path is enforced by orchestration through mesh identity and
-authorization policy, not by a shared `/internal/**` rule in `service-common`.
-
-## Scope & Boundaries
-
-**What this service does:**
-- Manages authorization metadata: users, roles, permissions
-- Provides RBAC with simple role-permission mappings
-- Exposes an internal endpoint for Session Gateway to sync users and resolve roles/permissions before it writes the Redis session hash
-
-## Overview
-
-The Permission Service manages authorization data including:
-- Users (local records linked to identity provider via `idp_sub`)
-- Roles (2 defaults: ADMIN, USER; managed via migrations)
-- Permissions (atomic definitions in `resource:action` format)
-- User-Role assignments (simple join table)
-- Role-Permission mappings (simple join table)
-
-The `idp_sub` field stores the OIDC `sub` claim from any compliant identity provider. This is intentionally provider-agnostic to avoid identity provider lock-in — the current deployment uses Auth0, but no Auth0-specific logic exists in the codebase.
-User synchronization is keyed by `idp_sub`; `email` and `display_name` are mutable IdP-owned
-profile fields. Active users may share the same email locally, and email remains indexed only for
-admin search/filtering rather than identity resolution.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint [Session Gateway](https://github.com/budgetanalyzer/session-gateway) uses during login, token exchange, and heartbeat-driven refresh.
 
 ## Configuration
 
@@ -111,31 +85,7 @@ users.
 
 ### Default Roles
 
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| ADMIN | Broad access | 13 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read/write, currencies:read/write |
-| USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read, currencies:read |
-
-Roles are managed exclusively via Flyway migrations, not at runtime.
-
-Both bundles respect a grant-time action hierarchy: on any resource/scope, `:write` and `:delete` each require `:read`, but are independent of each other. Every role with `{r}:write` also holds `{r}:read`, and every role with `{r}:delete` also holds `{r}:read`; a role may legitimately hold `{read, write}`, `{read, delete}`, or `{read, write, delete}`. The invariant lets downstream services and UIs do literal permission checks — e.g. a route guard requiring `currencies:write` does not also need to check `currencies:read`. It is enforced by convention in migrations, not by runtime expansion. See [docs/authorization-model.md](docs/authorization-model.md#permission-action-hierarchy) for rationale.
-
-### Scoped Permissions
-
-The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
-scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
-This currently exists only for transactions:
-
-- `transactions:read:any`
-- `transactions:write:any`
-- `transactions:delete:any`
-
-`views:*` intentionally has no `:any` variants yet. If cross-user saved-view workflows are added
-later, add scoped `views:*:any` permissions instead of granting the own-resource `views:*`
-permissions to ADMIN.
-
-The authoritative description lives in
-[docs/authorization-model.md](docs/authorization-model.md).
+Two default roles (ADMIN, USER) are managed exclusively via Flyway migrations, not at runtime. See [docs/authorization-model.md](docs/authorization-model.md) for the full permission matrix, scoped permissions, and action hierarchy rationale.
 
 ## API Endpoints
 
@@ -155,23 +105,15 @@ The authoritative description lives in
 
 ## Architecture
 
-See [docs/authorization-model.md](docs/authorization-model.md) for the authoritative description of the role/permission data model, the rationale behind it, and the UI authorization guidance ("roles for layouts, permissions for actions").
+See [docs/authorization-model.md](docs/authorization-model.md) for the role/permission data model, rationale, and UI authorization guidance.
 
-### Soft Delete Strategy
+## Related Repositories
 
-- **Users, Roles, Permissions**: Soft delete with `deleted` flag
-- **Assignments (UserRole, RolePermission)**: Hard delete on revocation
-
-### Deactivation Flow
-
-- Deactivation commits the user status change and role removal in PostgreSQL before calling Session Gateway to revoke sessions
-- The login and refresh gate uses an indexed `idp_sub + status` lookup so deactivated users are rejected without scanning the full `users` table
-
-## Related Services
-
-- **Session Gateway**: Session-based edge authorization service for browser clients; calls the internal endpoint to sync users and resolve roles/permissions before writing the Redis session hash
-- **Transaction Service**: Transaction management
-- **service-common**: Shared library (base entities, exception handling)
+- [session-gateway](https://github.com/budgetanalyzer/session-gateway) — Edge authorization; calls the internal endpoint to sync users and resolve permissions
+- [transaction-service](https://github.com/budgetanalyzer/transaction-service) — Transaction management
+- [currency-service](https://github.com/budgetanalyzer/currency-service) — Currency management
+- [service-common](https://github.com/budgetanalyzer/service-common) — Shared library (base entities, exception handling)
+- [orchestration](https://github.com/budgetanalyzer/orchestration) — Infrastructure and local dev environment
 
 ## License
 
