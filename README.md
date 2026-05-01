@@ -87,21 +87,11 @@ users.
 
 Two default roles (ADMIN, USER) are managed exclusively via Flyway migrations, not at runtime. See [docs/authorization-model.md](docs/authorization-model.md) for the full permission matrix, scoped permissions, and action hierarchy rationale.
 
-## API Endpoints
+## Capabilities
 
-### User Administration (`/v1/users`)
+**User administration** — Search and view users with their role assignments. Deactivate users, which removes their roles and revokes active sessions.
 
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| GET | `/v1/users` | Search users with pagination, filtering, and sorting; includes role IDs per user | `users:read` |
-| GET | `/v1/users/{id}` | Get user by ID with role IDs plus dereferenced `deactivatedBy`/`deletedBy` actor objects (`id`, `displayName`, `email`) | `users:read` |
-| POST | `/v1/users/{id}/deactivate` | Deactivate user, remove roles, revoke sessions | `users:write` |
-
-### Internal (`/internal/v1/users`)
-
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| GET | `/internal/v1/users/{idpSub}/permissions` | Sync user and return permissions for session creation, token exchange, and refresh | Service-owned path exception; ingress/mesh restricted |
+**Permission resolution** — Internal endpoint that syncs a user from the identity provider and returns their resolved permissions. Called by Session Gateway during login, token exchange, and session refresh.
 
 ## Architecture
 
