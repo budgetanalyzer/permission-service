@@ -7,7 +7,6 @@ plugins {
     java
     checkstyle
     alias(libs.plugins.spring.boot)
-    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spotless)
 }
 
@@ -37,6 +36,8 @@ repositories {
 }
 
 dependencies {
+    implementation(platform(libs.budgetanalyzer.spring.platform))
+
     // Service-web provides core functionality and common utilities
     implementation(libs.service.web)
 
