@@ -18,7 +18,7 @@ Authorization data management microservice for the Budget Analyzer application. 
 
 ## Prerequisites
 
-- Java 24+
+- Java 25
 - PostgreSQL database named `permission`
 - OIDC identity provider configured (issuer URI, audience)
 
