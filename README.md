@@ -18,7 +18,7 @@ Authorization data management microservice for the Budget Analyzer application. 
 
 ## Prerequisites
 
-- Java 24+
+- Java 25
 - PostgreSQL database named `permission`
 - OIDC identity provider configured (issuer URI, audience)
 
@@ -29,6 +29,9 @@ from `mavenLocal()` — no GitHub credentials required. Default GitHub Actions
 `build.yml` runs and release builds resolve the pinned `serviceCommon` version
 from GitHub Packages. The full contract is documented in orchestration:
 [service-common artifact resolution](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/service-common-artifact-resolution.md).
+This service imports `org.budgetanalyzer:spring-platform` for shared Spring
+dependency management and keeps `org.budgetanalyzer:service-web` explicit for
+runtime utilities.
 
 ## Development
 
@@ -89,7 +92,7 @@ See [docs/authorization-model.md](docs/authorization-model.md) for the role/perm
 - [session-gateway](https://github.com/budgetanalyzer/session-gateway) — Edge authorization; calls the internal endpoint to sync users and resolve permissions
 - [transaction-service](https://github.com/budgetanalyzer/transaction-service) — Transaction management
 - [currency-service](https://github.com/budgetanalyzer/currency-service) — Currency management
-- [service-common](https://github.com/budgetanalyzer/service-common) — Shared library (base entities, exception handling)
+- [service-common](https://github.com/budgetanalyzer/service-common) — Shared Spring platform and runtime libraries (base entities, exception handling)
 - [orchestration](https://github.com/budgetanalyzer/orchestration) — Infrastructure and local dev environment
 
 ## License
