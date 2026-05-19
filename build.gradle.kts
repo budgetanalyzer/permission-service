@@ -6,6 +6,7 @@ val githubPackagesToken = providers.environmentVariable("GITHUB_TOKEN")
 plugins {
     java
     checkstyle
+    jacoco
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spotless)
 }
@@ -79,6 +80,10 @@ checkstyle {
     config = resources.text.fromUri("https://raw.githubusercontent.com/budgetanalyzer/checkstyle-config/main/checkstyle.xml")
 }
 
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
+}
+
 tasks.named("check") {
     dependsOn("spotlessCheck")
 }
@@ -96,6 +101,16 @@ tasks.withType<BootRun> {
 tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs = jvmArgsList
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
 }
 
 tasks.withType<Javadoc> {
