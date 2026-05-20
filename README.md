@@ -61,12 +61,19 @@ host defaults to `localhost:5432`. If you are reusing values from
 
 ```bash
 ./gradlew test
+
+# Generate JaCoCo XML and HTML coverage reports
+./gradlew test jacocoTestReport
 ```
 
 Repository integration tests use Testcontainers-backed PostgreSQL, so Docker must be available
 when running the full test suite. `UserRoleRepositoryIntegrationTest` and
 `UserIdentityIntegrationTest` both run Flyway migrations with Hibernate schema validation enabled
 against PostgreSQL rather than the shared H2 test setup.
+
+Coverage reports are written to `build/reports/jacoco/test/html/index.html` and
+`build/reports/jacoco/test/jacocoTestReport.xml`. `check` enforces the
+configured coverage gates.
 
 ## Database
 
