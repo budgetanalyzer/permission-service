@@ -72,10 +72,8 @@ when running the full test suite. `UserRoleRepositoryIntegrationTest` and
 against PostgreSQL rather than the shared H2 test setup.
 
 Coverage reports are written to `build/reports/jacoco/test/html/index.html` and
-`build/reports/jacoco/test/jacocoTestReport.xml`. `check` enforces the Phase 2
-coverage gates: 80% line coverage and 70% branch coverage. The recorded baseline
-is 84.60% line / 72.50% branch; ratchet branch coverage after targeted
-authorization and search edge-case tests.
+`build/reports/jacoco/test/jacocoTestReport.xml`. `check` enforces the
+configured coverage gates.
 
 ## Database
 
