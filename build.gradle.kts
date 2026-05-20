@@ -85,7 +85,7 @@ jacoco {
 }
 
 tasks.named("check") {
-    dependsOn("spotlessCheck")
+    dependsOn("spotlessCheck", tasks.jacocoTestCoverageVerification)
 }
 
 val jvmArgsList = listOf(
@@ -110,6 +110,24 @@ tasks.jacocoTestReport {
         xml.required.set(true)
         html.required.set(true)
         csv.required.set(false)
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.70".toBigDecimal()
+            }
+        }
     }
 }
 
