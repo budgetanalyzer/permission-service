@@ -26,6 +26,7 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate  # Flyway manages schema, JPA validates it matches entities
     show-sql: false

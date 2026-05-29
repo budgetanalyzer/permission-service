@@ -15,6 +15,7 @@ Authorization data management microservice for the Budget Analyzer application. 
 | Port | 8086 |
 | Context Path | `/permission-service` |
 | Database | `permission` |
+| Authentication | Claims headers from Session Gateway / Envoy ext_authz; no local username/password store |
 
 ## Prerequisites
 
@@ -32,6 +33,11 @@ from GitHub Packages. The full contract is documented in orchestration:
 This service imports `org.budgetanalyzer:spring-platform` for shared Spring
 dependency management and keeps `org.budgetanalyzer:service-web` explicit for
 runtime utilities.
+
+The service intentionally excludes Spring Boot's servlet user-details
+auto-configuration. It does not create or accept generated default passwords;
+request authentication is handled by the shared claims-header security filter
+using headers injected by the trusted gateway path.
 
 ## Development
 

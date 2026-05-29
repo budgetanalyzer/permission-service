@@ -78,8 +78,8 @@ Two default roles seeded via migration:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| ADMIN | Broad access | 13 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read/write, currencies:read/write |
-| USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read, currencies:read |
+| ADMIN | Broad access | 14 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read, statementformats:read:any/write:any, currencies:read/write |
+| USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read/write, currencies:read |
 
 Roles are managed exclusively via Flyway migrations, not at runtime.
 
@@ -88,10 +88,12 @@ Roles are managed exclusively via Flyway migrations, not at runtime.
 The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
 scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
 Transactions currently use scoped variants (`transactions:read:any`, `transactions:write:any`,
-`transactions:delete:any`). `views:*` intentionally has no scoped `:any` variants yet; add
-them only when a controller actually needs cross-user saved-view access instead of granting
-the own-resource `views:*` permissions to ADMIN. Future scoped permissions should follow the
-same pattern and should not be pre-created.
+`transactions:delete:any`). Statement formats use scoped read/write variants
+(`statementformats:read:any`, `statementformats:write:any`) for system catalog and promotion
+workflows. `views:*` intentionally has no scoped `:any` variants yet; add them only when a
+controller actually needs cross-user saved-view access instead of granting the own-resource
+`views:*` permissions to ADMIN. Future scoped permissions should follow the same pattern and
+should not be pre-created.
 
 ### Action Hierarchy (grant-time invariant)
 
