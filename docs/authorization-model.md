@@ -57,9 +57,9 @@ INSERT INTO role_permissions (role_id, permission_id, ...) VALUES
 Today that bundle intentionally excludes all `views:*` permissions and also excludes
 `statementformats:delete`. Those own-resource saved-view permissions stay USER-only until there
 is a real cross-user workflow that justifies scoped variants such as `views:read:any`, and
-statement format management is intentionally limited to read/write. **This is a seed-data
-convention, not an enforced invariant.** Any new permission or bundle change must be reflected
-in `V2__seed_default_data.sql`.
+statement format management is intentionally limited to read/write plus scoped read/write for
+system catalog and promotion workflows. **This is a seed-data convention, not an enforced
+invariant.** Any new permission or bundle change must be reflected in Flyway migrations.
 
 ## Invariants to preserve
 
@@ -96,6 +96,7 @@ The upside is concrete: downstream callers (Session Gateway, UI route guards, co
 The **single enforcement point** is Flyway migrations under `src/main/resources/db/migration/`. Specifically:
 
 - `V2__seed_default_data.sql` — the initial ADMIN and USER grants. Both bundles respect the hierarchy today: every `:write` and every `:delete` grant is accompanied by `:read`, including the `:any` scoped variants. Some resources in the current bundles happen to hold `{read, write, delete}` together, but that is a property of those specific grants, not a requirement of the invariant.
+- `V3__add_statement_format_scoped_permissions.sql` — adds statement format `:any` read/write permissions, grants `statementformats:read:any` to ADMIN, converts ADMIN's unscoped `statementformats:write` grant to `statementformats:write:any`, and grants unscoped `statementformats:write` to USER so users can create and maintain their own custom statement formats.
 - Any future migration that inserts into `role_permissions` — the author must grant `{resource}:read` alongside any `{resource}:write` or `{resource}:delete` grant. This includes scoped variants: `{resource}:write:any` and `{resource}:delete:any` each require `{resource}:read:any` on the same role.
 - Any future migration that deletes from `role_permissions` — the author must revoke `{resource}:write` and `{resource}:delete` before or at the same time as removing `{resource}:read`, so the role never transiently holds a modifying action without read.
 

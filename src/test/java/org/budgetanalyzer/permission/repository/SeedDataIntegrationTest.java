@@ -42,16 +42,19 @@ class SeedDataIntegrationTest {
   private static final String TRANSACTIONS_WRITE_ANY = "transactions:write:any";
   private static final String TRANSACTIONS_DELETE_ANY = "transactions:delete:any";
   private static final String TRANSACTIONS_DELETE = "transactions:delete";
+  private static final String STATEMENT_FORMATS_WRITE = "statementformats:write";
+  private static final String STATEMENT_FORMATS_READ_ANY = "statementformats:read:any";
+  private static final String STATEMENT_FORMATS_WRITE_ANY = "statementformats:write:any";
   private static final String STATEMENT_FORMATS_DELETE = "statementformats:delete";
   private static final String VIEWS_READ = "views:read";
   private static final String VIEWS_WRITE = "views:write";
   private static final String VIEWS_DELETE = "views:delete";
 
-  private static final int EXPECTED_TOTAL_PERMISSIONS = 16;
-  private static final int EXPECTED_ADMIN_PERMISSIONS = 13;
+  private static final int EXPECTED_TOTAL_PERMISSIONS = 18;
+  private static final int EXPECTED_ADMIN_PERMISSIONS = 14;
   // USER gets transactions read/write/delete, views read/write/delete, statementformats:read, and
-  // currencies:read.
-  private static final int EXPECTED_USER_PERMISSIONS = 8;
+  // statementformats:write, and currencies:read.
+  private static final int EXPECTED_USER_PERMISSIONS = 9;
 
   @Container
   private static final PostgreSQLContainer<?> postgreSQLContainer =
@@ -89,13 +92,18 @@ class SeedDataIntegrationTest {
     }
 
     @Test
-    @DisplayName("contains the three new cross-user transaction permissions")
-    void containsTheThreeNewCrossUserTransactionPermissions() {
+    @DisplayName("contains scoped transaction and statement format permissions")
+    void containsScopedTransactionAndStatementFormatPermissions() {
       List<Permission> permissions = permissionRepository.findAllByDeletedFalse();
 
       assertThat(permissions)
           .extracting(Permission::getId)
-          .contains(TRANSACTIONS_READ_ANY, TRANSACTIONS_WRITE_ANY, TRANSACTIONS_DELETE_ANY);
+          .contains(
+              TRANSACTIONS_READ_ANY,
+              TRANSACTIONS_WRITE_ANY,
+              TRANSACTIONS_DELETE_ANY,
+              STATEMENT_FORMATS_READ_ANY,
+              STATEMENT_FORMATS_WRITE_ANY);
     }
   }
 
@@ -105,9 +113,9 @@ class SeedDataIntegrationTest {
 
     @Test
     @DisplayName(
-        "ADMIN role bundles the 13 non-view permissions while excluding saved views and "
+        "ADMIN role bundles the non-view permissions while excluding saved views and "
             + "statement format deletion")
-    void adminRoleBundlesThirteenNonViewPermissions() {
+    void adminRoleBundlesNonViewPermissions() {
       Long adminCount = countPermissionsForRole(ADMIN_ROLE_ID);
       Set<String> adminPermissionIds = findPermissionIdsForRole(ADMIN_ROLE_ID);
 
@@ -117,26 +125,38 @@ class SeedDataIntegrationTest {
     }
 
     @Test
-    @DisplayName("ADMIN role grants the three new cross-user transaction permissions")
-    void adminRoleGrantsTheThreeNewCrossUserTransactionPermissions() {
+    @DisplayName("ADMIN role grants scoped transaction and statement format permissions")
+    void adminRoleGrantsScopedTransactionAndStatementFormatPermissions() {
       Set<String> adminPermissionIds = findPermissionIdsForRole(ADMIN_ROLE_ID);
 
       assertThat(adminPermissionIds)
-          .contains(TRANSACTIONS_READ_ANY, TRANSACTIONS_WRITE_ANY, TRANSACTIONS_DELETE_ANY);
+          .contains(
+              TRANSACTIONS_READ_ANY,
+              TRANSACTIONS_WRITE_ANY,
+              TRANSACTIONS_DELETE_ANY,
+              STATEMENT_FORMATS_READ_ANY,
+              STATEMENT_FORMATS_WRITE_ANY)
+          .doesNotContain(STATEMENT_FORMATS_WRITE);
     }
 
     @Test
     @DisplayName(
-        "USER role has eight permissions including transactions delete and excludes the "
+        "USER role has own-resource permissions including statement format write and excludes the "
             + "cross-user variants")
-    void userRoleHasEightPermissionsIncludingTransactionsDeleteAndExcludesTheCrossUserVariants() {
+    void userRoleHasOwnResourcePermissionsAndExcludesTheCrossUserVariants() {
       Long userCount = countPermissionsForRole(USER_ROLE_ID);
       Set<String> userPermissionIds = findPermissionIdsForRole(USER_ROLE_ID);
 
       assertThat(userCount).isEqualTo((long) EXPECTED_USER_PERMISSIONS);
       assertThat(userPermissionIds)
-          .contains(TRANSACTIONS_DELETE, VIEWS_READ, VIEWS_WRITE, VIEWS_DELETE)
-          .doesNotContain(TRANSACTIONS_READ_ANY, TRANSACTIONS_WRITE_ANY, TRANSACTIONS_DELETE_ANY);
+          .contains(
+              TRANSACTIONS_DELETE, VIEWS_READ, VIEWS_WRITE, VIEWS_DELETE, STATEMENT_FORMATS_WRITE)
+          .doesNotContain(
+              TRANSACTIONS_READ_ANY,
+              TRANSACTIONS_WRITE_ANY,
+              TRANSACTIONS_DELETE_ANY,
+              STATEMENT_FORMATS_READ_ANY,
+              STATEMENT_FORMATS_WRITE_ANY);
     }
   }
 
