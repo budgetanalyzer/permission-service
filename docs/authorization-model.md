@@ -156,7 +156,7 @@ If the "limited admin" or "custom permission set per user" requirement ever surf
 
 ### Deferred: grant/revocation audit trail
 
-`UserRole` and `RolePermission` currently extend `AuditableEntity`, which means `createdAt`/`createdBy` capture when a grant was made but nothing captures when one is revoked — `repository.delete(...)` removes the row entirely. This is acceptable today because there is no revocation flow: no controller, no service method, no admin UI deletes these rows. Seed data in `V2__seed_default_data.sql` is the only writer.
+`UserRole` and `RolePermission` currently extend `AuditableEntity`, which means `createdAt`/`createdBy` capture when a grant was made but nothing captures when one is revoked — `repository.delete(...)` removes the row entirely. This is acceptable today because there is no runtime revocation flow: no controller, no service method, and no admin UI deletes these rows. Flyway migrations are the only writers; `V2__seed_default_data.sql` creates the initial mappings, and `V3__add_statement_format_scoped_permissions.sql` adjusts the statement format grants.
 
 When a revocation flow is added, choose between:
 
@@ -179,8 +179,8 @@ If per-user exceptions are ever needed, use option 2 (additive delta) instead. I
 
 ## Quick reference
 
-- **Where permissions are defined:** `db/migration/V*.sql`
-- **Where ADMIN's 13-permission non-view bundle is defined:** `db/migration/V2__seed_default_data.sql`
+- **Where permissions are defined:** `src/main/resources/db/migration/V*.sql`
+- **Where the current default role bundles are defined:** Cumulatively in `src/main/resources/db/migration/V2__seed_default_data.sql` and `src/main/resources/db/migration/V3__add_statement_format_scoped_permissions.sql`; after V3, ADMIN has 14 non-view permissions and USER has 9 own-resource permissions.
 - **Resolver query:** `UserRoleRepository.findPermissionIdsByUserId`
 - **DTO returned to downstream services:** `service/dto/EffectivePermissions.java` (fields: `roles`, `permissions`)
 - **Admin user detail response shape:** `api/response/UserDetailResponse.java` (`deactivatedBy` and `deletedBy` are nullable `UserReference { id, displayName, email }` objects)
