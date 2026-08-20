@@ -2,336 +2,277 @@
 
 ## Tree Position
 
-**Archetype**: service
-**Scope**: budgetanalyzer ecosystem
-**Role**: Manages RBAC and authorization data (roles, permissions, user-role assignments)
+**Archetype:** service
+**Scope:** Budget Analyzer authorization data
+**Role:** Owns RBAC data, including roles, permissions, and user-role assignments
 
 ### Relationships
-- **Consumes**: service-common (patterns)
-- **Coordinated by**: orchestration
-- **Peers with**: Discover via `ls /workspace/*-service`
 
-### Permissions
-- **Read**: `../service-common/`, `../orchestration/docs/`
-- **Write**: This repository only
+- Consume shared Java patterns and runtime libraries from `../service-common/`.
+- Supply user roles and permissions to Session Gateway during session creation and refresh.
+- Let `../orchestration/` own deployment, routing, service-mesh policy, and full-stack local runtime wiring.
+- Discover peer services with the commands in [Discovery](#discovery); do not maintain a peer inventory here.
 
-### Discovery
+### Boundaries
+
+- Read this repository, `../service-common/`, and `../orchestration/docs/` when the task requires cross-repository context.
+- Read `../ai-session-handler/docs/plan-format.md` when creating an implementation or execution plan for AI Session Handler.
+- Write only within this repository.
+- Do not modify sibling repositories from this context. Report any required cross-repository change to the user.
+
+## Discovery
+
+Use direct repository search and reads for code exploration. Never use agent or
+subagent tools for code exploration.
+
 ```bash
-# My peers
-ls -d /workspace/*-service
-# My platform
-ls ../service-common/
+# Repository structure
+find . -maxdepth 2 -type f -not -path './.git/*' -not -path './build/*' | sort
+
+# Source and test files
+rg --files src/main src/test | sort
+
+# Peer services
+ls -d ../*-service
+
+# Controllers, routes, and method security
+rg -n '@(Get|Post|Put|Patch|Delete)Mapping|@RequestMapping|@PreAuthorize' \
+  src/main/java --glob '*.java'
+
+# Flyway migrations
+find src/main/resources/db/migration -maxdepth 1 -type f | sort
+
+# Build tasks and dependencies
+./gradlew tasks
+rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.kts
 ```
 
-## Code Exploration
+## Sources of Truth
 
-NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read directly.
+- **Purpose, prerequisites, setup, and local use:** Read [README.md](README.md)
+  before changing prerequisites, setup assumptions, or local run behavior.
+- **Full-stack local environment:** Read
+  [getting-started.md](../orchestration/docs/development/getting-started.md) before
+  changing or debugging orchestration, Tilt, or workspace bootstrap behavior.
+- **Runtime configuration:** Read
+  [application.yml](src/main/resources/application.yml) before changing or
+  documenting ports, context paths, database settings, logging, or Session
+  Gateway revocation properties.
+- **Authorization model:** Read
+  [authorization-model.md](docs/authorization-model.md) before changing the
+  RBAC schema, permission semantics, role composition, scoped permissions, or
+  UI authorization guidance. Treat the complete ordered history under
+  `src/main/resources/db/migration/` as the authority for current seeded data.
+- **HTTP API and security annotations:** Read controller source under
+  `src/main/java/org/budgetanalyzer/permission/api/` and
+  `src/main/java/org/budgetanalyzer/permission/config/OpenApiConfig.java` before
+  adding, removing, or reshaping endpoints or response contracts. Discover the
+  current routes instead of copying an endpoint inventory into this file.
+- **User deactivation and session revocation:** Read
+  `src/main/java/org/budgetanalyzer/permission/service/UserService.java`,
+  `src/main/java/org/budgetanalyzer/permission/client/SessionGatewayClient.java`,
+  `src/main/java/org/budgetanalyzer/permission/config/SessionRevocationProperties.java`,
+  and `src/main/resources/application.yml` before changing deactivation
+  ordering, retry behavior, or failure semantics.
+- **Build and dependencies:** Read `build.gradle.kts`, `settings.gradle.kts`,
+  and `gradle/libs.versions.toml` before changing the toolchain, plugins,
+  dependencies, test gates, or coverage gates.
+- **Shared Spring architecture:** Read
+  [spring-boot-conventions.md](../service-common/docs/spring-boot-conventions.md)
+  when changing layers, entities, controllers, dependency injection, or HTTP
+  response patterns. Read [service-common/AGENTS.md](../service-common/AGENTS.md)
+  before implementing a new feature that uses shared architecture patterns.
+- **Java quality:** Read
+  [code-quality-standards.md](../service-common/docs/code-quality-standards.md)
+  before writing or modifying Java code. Do not skip this prerequisite.
+- **Errors and tests:** Read
+  [error-handling.md](../service-common/docs/error-handling.md) when changing
+  error flows or custom exceptions. Read
+  [testing-patterns.md](../service-common/docs/testing-patterns.md) when writing
+  or modifying tests.
+- **Session-edge and deployment architecture:** Read
+  [system-overview.md](../orchestration/docs/architecture/system-overview.md),
+  [session-edge-authorization-pattern.md](../orchestration/docs/architecture/session-edge-authorization-pattern.md),
+  and [security-architecture.md](../orchestration/docs/architecture/security-architecture.md)
+  before changing the internal permission-sync contract, claims flow, Session
+  Gateway integration, or mesh security assumptions. Read
+  [port-reference.md](../orchestration/docs/architecture/port-reference.md) for
+  current exposure and caller rules.
+- **CI and release artifact resolution:** Read
+  [service-common-artifact-resolution.md](../orchestration/docs/development/service-common-artifact-resolution.md)
+  when changing or debugging `service-common` resolution outside the normal
+  local orchestration flow.
 
-## Documentation Discipline
+## Operating Rules
 
-Always keep documentation up to date after any configuration or code change.
+### Repository and Git Safety
 
-Update the nearest affected documentation in the same work:
-- `AGENTS.md` when instructions, guardrails, or discovery commands change
-- Before updating `AGENTS.md`, read and apply the
-  [AGENTS.md checkstyle](https://github.com/budgetanalyzer/orchestration/blob/main/docs/agents-md-checkstyle.md).
-- `README.md` when setup, usage, or repository purpose changes
-- `docs/` when architecture, configuration, APIs, behaviors, or operating procedures change
+- Never run git write operations such as `commit`, `push`, `checkout`, `reset`,
+  branch manipulation, or history rewriting unless the user explicitly asks.
+- Do not write outside this repository. Surface required sibling-repository
+  changes instead of making them.
+- Stop and report a missing prerequisite or an authority-boundary conflict. Do
+  not invent a workaround.
 
-When creating an implementation or execution plan intended for AI Session
-Handler, follow the [AI Session Handler plan format](../ai-session-handler/docs/plan-format.md),
-use its canonical template, replace every placeholder, and retain the numbered
+### Java and Spring Architecture
+
+- Follow the shared layered architecture: controllers own HTTP concerns,
+  services own business rules and transactions, repositories own data access,
+  and entities carry persistence state.
+- Use `AuditableEntity` and `SoftDeletableEntity` according to the shared entity
+  decision rules. Keep pure association rows simple when row existence is the
+  business fact.
+- Use the shared `ServletApiExceptionHandler` and exception hierarchy for
+  consistent error responses.
+- Name API models `*Request` and `*Response`; never use `*Dto` or `*DTO`.
+- Use provider-independent identifiers in `{prefix}_{full-uuid-hex}` form.
+- Import persistence APIs from `jakarta.persistence.*`; never use
+  `org.hibernate.*` APIs.
+- Apply the Java quality rules for `var`, full variable names, explicit imports,
+  and Javadoc punctuation from the required code-quality document.
+
+### Architectural Simplicity
+
+- Choose the simplest implementation that correctly handles realistic inputs,
+  states, and failure modes. Do not trade away security, data integrity, or
+  required behavior for brevity.
+- Put validation in the layer that owns the rule: request models and
+  controllers validate request shape and syntax; services validate business
+  invariants, ownership, persistence state, and cross-entity rules.
+- Do not duplicate API validation in the service layer when every caller passes
+  through the validated API contract. Validate again only when another caller
+  can bypass that boundary or the service owns the rule.
+- Do not add guards, fallbacks, custom exception paths, abstractions, or
+  extension points for states that enforced boundaries make impossible.
+- Handle plausible failures explicitly at external and asynchronous boundaries.
+- Before adding a defensive branch, identify how the state can arise and what
+  the caller or system can usefully do in response. Omit the branch if neither
+  is concrete.
+
+### Security
+
+- Every controller endpoint method must have `@PreAuthorize`.
+- The only exception is
+  `InternalPermissionController#getUserPermissions`, which is protected by the
+  narrow `/internal/v1/users/*/permissions` matcher in
+  `PermissionServiceSecurityConfig`. Do not broaden this anonymous
+  claims-header exception; orchestration must continue restricting callers
+  through mesh identity and authorization policy.
+- Use `SecurityContextUtil` to obtain the current user. Do not accept actor
+  identity from a request body or untrusted header in application code.
+- Do not bypass authentication, authorization, persistence, or validation
+  layers as a durable fix.
+- Preserve the deactivation contract: commit the local user-state change before
+  external session revocation, keep transient retry bounded, and keep exhausted
+  revocation safe for the caller to retry. Verify current details in the owner
+  code and configuration before changing this flow.
+
+### Roles and Permissions
+
+- Manage roles, permissions, and role-permission mappings only through Flyway
+  migrations. Do not add a runtime grant surface without an explicit design
+  change.
+- Use `{resource}:{action}` for own-resource permissions and
+  `{resource}:{action}:any` for cross-user scope. Add a scoped permission only
+  when a controller has a real cross-user access requirement; do not pre-create
+  speculative variants.
+- Preserve the grant-time action hierarchy within each scope:
+  - Granting `{resource}:write` also requires `{resource}:read` on the same role.
+  - Granting `{resource}:delete` also requires `{resource}:read` on the same role.
+  - `:write` and `:delete` are independent; neither requires the other.
+  - Before revoking `{resource}:read`, revoke matching `:write` and `:delete` grants.
+  - Apply the same rules independently to `:any` permissions.
+- Do not add runtime permission expansion. Downstream services and UIs rely on
+  literal permission checks against well-formed migration grants.
+- After any migration that adds, grants, or revokes a role permission, remind
+  the user to synchronize
+  `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java`.
+  This repository cannot make that required sibling-repository change.
+
+## Development Workflow
+
+1. Read the relevant source-of-truth documents before implementation.
+2. Confirm the required Java toolchain, Gradle wrapper, database settings, and
+   any external credentials described by `README.md` are available. Confirm
+   Docker is available before running Testcontainers-backed integration tests.
+3. Inspect the current source, tests, build configuration, and migrations with
+   the discovery commands above.
+4. Implement the smallest coherent change and update its owner documentation in
+   the same work.
+5. Run the validation gates appropriate to the changed files.
+6. If a required tool, service, credential, container runtime, or verifier is
+   unavailable, stop and report it. Do not claim full verification.
+
+Use `./gradlew bootRun` for the service-only local entry point after satisfying
+the prerequisites in `README.md`. Use the orchestration getting-started guide
+for the supported full-stack path.
+
+### AI Session Handler Plans
+
+When creating an implementation or execution plan for AI Session Handler, read
+and follow [plan-format.md](../ai-session-handler/docs/plan-format.md). Use its
+canonical template, replace every placeholder, and retain numbered
 `## Phase N: Title` headings.
 
-Run a specific plan through the workspace wrapper with:
+Run a plan from this repository root with:
 
 ```bash
 ai-session-handler run \
-  --plan /workspace/REPOSITORY/docs/plans/PLAN.md \
+  --plan docs/plans/PLAN.md \
   --max-phases 999 \
   --quiet \
-  --agent-cmd "/workspace/ai-session-handler/.venv/bin/ai-session-handler-codex-high --model MODEL"
+  --agent-cmd "../ai-session-handler/.venv/bin/ai-session-handler-codex-high --model MODEL"
 ```
 
-Omit `--model MODEL` from the quoted agent command to use the wrapper's
+Remove `--model MODEL` from the quoted agent command to use the wrapper's
 configured or default model.
 
-Do not leave documentation updates as follow-up work.
+## Validation
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint Session Gateway uses to sync users and resolve roles/permissions during session creation and refresh.
-
-**Port:** 8086 | **Context Path:** `/permission-service` | **Database:** `permission`
-
-## Project Status
-
-This service provides clean RBAC for the Budget Analyzer ecosystem. Session Gateway integration is complete — Session Gateway calls the internal endpoint during login, token exchange, and heartbeat-driven refresh to sync users and resolve roles/permissions before it writes the Redis session hash. Envoy ext_authz later reads that session hash and injects claims headers into upstream requests.
-
-**Current focus:** Bug fixes and documentation, not new features.
-
-## Coding Standards
-
-**Before writing or modifying any Java code, read [code-quality-standards.md](../service-common/docs/code-quality-standards.md).** Do not skip this step. The most common violations: missing `var`, wildcard imports, abbreviated variable names, Javadoc without trailing periods.
-
-## Spring Boot Patterns
-
-**This service follows standard Budget Analyzer Spring Boot conventions.**
-
-**Quick reference:**
-- Extends `AuditableEntity` for audit fields (createdAt, updatedAt, createdBy, updatedBy)
-- Extends `SoftDeletableEntity` for soft delete (deleted, deletedAt, deletedBy)
-- Uses `ServletApiExceptionHandler` (from service-common) for consistent error responses including security exceptions
-- DTOs: `*Request`, `*Response` — NEVER `*Dto`/`*DTO`
-- Identifiers: `{prefix}_{full-uuid-hex}` — see service-common Vendor Independence
-- Imports: Use `jakarta.persistence.*` — NEVER `org.hibernate.*`
-
-**When to consult service-common documentation:**
-- **Implementing new features** → Read [service-common/AGENTS.md](../service-common/AGENTS.md) for architecture patterns
-- **Handling errors** → Read [error-handling.md](../service-common/docs/error-handling.md) for exception hierarchy
-- **Writing tests** → Read [testing-patterns.md](../service-common/docs/testing-patterns.md) for JUnit 5 + TestContainers conventions
-- **Code quality issues** → Read [code-quality-standards.md](../service-common/docs/code-quality-standards.md) for Spotless, Checkstyle, var usage
-
-### Architectural Simplicity (KISS)
-
-**Primary rule: Keep it simple.** Choose the simplest implementation that correctly handles realistic inputs, states, and failure modes. Simplicity must not come at the expense of security, data integrity, or required behavior.
-
-- Put validation in the layer that owns the rule: request models and controllers validate request shape and syntax; services validate business invariants, ownership, persistence state, and cross-entity rules.
-- Do not duplicate API validation in the service layer when every call reaches the service through the validated API contract. Add service-level validation when another caller can bypass that contract or when the service owns the rule.
-- Do not add a guard, fallback, or custom exception path for a state made impossible by an enforced boundary or invariant.
-- At external or asynchronous boundaries, handle plausible failures explicitly because they are outside the local code's control.
-- Before adding a defensive branch, identify how the state can arise and what the caller or system can usefully do in response. If neither is concrete, omit the branch.
-- Prefer a direct implementation and established project patterns over speculative abstractions or extension points.
-
-## Service-Specific Patterns
-
-### Role Model
-
-Two default roles seeded via migration:
-
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| ADMIN | Broad access | 14 non-view permissions: transactions:read/write/delete, transactions:read:any/write:any/delete:any, users:read/write/delete, statementformats:read, statementformats:read:any/write:any, currencies:read/write |
-| USER | Standard access | transactions:read/write/delete, views:read/write/delete, statementformats:read/write, currencies:read |
-
-Roles are managed exclusively via Flyway migrations, not at runtime.
-
-### Scoped Permissions
-
-The base `{resource}:{action}` pattern is extended to `{resource}:{action}:{scope}` where the
-scope is omitted for the default (own-resources) case and `:any` denotes cross-user access.
-Transactions currently use scoped variants (`transactions:read:any`, `transactions:write:any`,
-`transactions:delete:any`). Statement formats use scoped read/write variants
-(`statementformats:read:any`, `statementformats:write:any`) for system catalog and promotion
-workflows. `views:*` intentionally has no scoped `:any` variants yet; add them only when a
-controller actually needs cross-user saved-view access instead of granting the own-resource
-`views:*` permissions to ADMIN. Future scoped permissions should follow the same pattern and
-should not be pre-created.
-
-### Action Hierarchy (grant-time invariant)
-
-For any resource/scope, both `:write` and `:delete` require `:read`, but `:write` and
-`:delete` are **independent** of each other. Every role that holds `{resource}:write` must
-also hold `{resource}:read`, and every role that holds `{resource}:delete` must also hold
-`{resource}:read`. A role may legitimately hold `{read, write}` (editor, no destroy),
-`{read, delete}` (archivist, no modify), or `{read, write, delete}` (full access). The
-invariant runs within a scope — `:write:any` implies `:read:any` but says nothing about
-the unscoped `:write`. Downstream services and UIs rely on this so they can do literal
-permission checks (e.g. a route guard requiring `currencies:write` does not also need to
-check `currencies:read`).
-
-The invariant is **not** enforced in code. It is enforced by convention in Flyway migrations
-— the only grant surface in the system. When writing any migration that inserts into or
-deletes from `role_permissions`:
-
-- Inserting `{r}:write` → also insert `{r}:read` on the same role in the same migration.
-- Inserting `{r}:delete` → also insert `{r}:read` on the same role in the same migration.
-- Deleting `{r}:read` → first delete any `{r}:write` and `{r}:delete` the role holds.
-- Scoped (`:any`) grants follow the same rules within the scope.
-
-Note: inserting `{r}:write` does **not** require inserting `{r}:delete`, and inserting
-`{r}:delete` does **not** require inserting `{r}:write`. Only `:read` is mandatory alongside
-either.
-
-See [docs/authorization-model.md](docs/authorization-model.md#permission-action-hierarchy)
-for rationale and the reason a runtime expansion helper is explicitly rejected.
-
-### Domain Model
-
-**Core entities (5 tables):**
-- `User` - Local record linked to identity provider via `idp_sub`; `email` is mutable IdP-owned profile data and is not unique among active users
-- `Role` - Role definitions (soft-deletable)
-- `Permission` - Atomic permissions in `resource:action` format
-- `UserRole` - Simple user-role join table
-- `RolePermission` - Simple role-permission join table
+Before completing Java, Gradle, or migration changes, run these commands in
+sequence:
 
 ```bash
-# View domain model
-tree src/main/java/org/budgetanalyzer/permission/domain
-```
-
-### Internal Permissions Endpoint
-
-`GET /internal/v1/users/{idpSub}/permissions` — Called by Session Gateway during login, token exchange, and heartbeat-driven refresh to:
-1. Sync user from identity provider data (creates on first login)
-2. Return `{ userId, roles, permissions }` for claims injection
-3. Bypass claims-header auth only for this narrow path (`/internal/v1/users/*/permissions`) via `PermissionServiceSecurityConfig`; orchestration still restricts callers with mesh identity and authorization policy
-
-### User Read Endpoints
-
-`GET /v1/users` — Admin UI search endpoint on `UserController`, protected by `@PreAuthorize("hasAuthority('users:read')")`. Returns paged users with filterable identity/status/timestamp fields plus assigned role IDs.
-
-`GET /v1/users/{id}` — Admin UI detail endpoint on `UserController`, protected by `@PreAuthorize("hasAuthority('users:read')")`. Returns one user's details, role IDs, and admin-forensics fields such as deactivation and soft-delete metadata.
-
-### User Deactivation Endpoint
-
-`POST /v1/users/{id}/deactivate` — Admin UI action on `UserController`, protected by `@PreAuthorize("hasAuthority('users:write')")`. The actor identity comes from the security context (no request body).
-
-**Response semantics:**
-- **200** — user deactivated and sessions revoked (returns `UserDeactivationResponse`)
-- **503** — user deactivated but session revocation failed after bounded retry; safe to retry the same request
-
-Session revocation uses bounded retry with exponential backoff configured via `session-gateway.revocation.*` properties in `application.yml`. The `SessionGatewayClient` retries connection failures, 5xx, and 429 responses; 4xx (except 429) fail immediately without retry.
-
-### Package Structure
-
-```
-org.budgetanalyzer.permission/
-├── api/                    # REST controllers
-│   ├── request/           # Request/filter DTOs
-│   └── response/          # Response DTOs
-├── client/                # Outbound HTTP clients
-├── config/                # Configuration classes
-├── domain/                # JPA entities
-├── repository/            # JPA repositories
-│   └── spec/             # JPA specification builders
-└── service/               # Business logic
-    ├── dto/               # Service-layer DTOs
-    └── exception/         # Custom exceptions
-```
-
-## API Documentation
-
-**Swagger UI:** http://localhost:8086/permission-service/swagger-ui.html
-
-**Endpoints (4 total):**
-- `GET /v1/users` - Search users (admin)
-- `GET /v1/users/{id}` - Get user details (admin)
-- `POST /v1/users/{id}/deactivate` - User deactivation (admin)
-- `GET /internal/v1/users/{idpSub}/permissions` - Internal endpoint for Session Gateway user sync and claims lookup
-
-**Via API Gateway:** http://localhost:8080/permission-service/...
-
-```bash
-# Find all endpoints
-grep -r "@GetMapping\|@PostMapping\|@PutMapping\|@DeleteMapping" src/main/java --include="*.java"
-```
-
-## Running Locally
-
-**Prerequisites:**
-- PostgreSQL with `permission` database
-
-```bash
-./gradlew bootRun
-```
-
-## Discovery Commands
-
-```bash
-# Find entities
-ls src/main/java/org/budgetanalyzer/permission/domain/
-
-# Find services
-ls src/main/java/org/budgetanalyzer/permission/service/
-
-# Find controllers
-ls src/main/java/org/budgetanalyzer/permission/api/
-
-# View migrations
-ls src/main/resources/db/migration/
-
-# Find security annotations
-grep -r "@PreAuthorize" src/main/java --include="*.java"
-
-# Find custom exceptions
-ls src/main/java/org/budgetanalyzer/permission/service/exception/
-```
-
-## Build and Test
-
-```bash
-# Build and test
-./gradlew clean build
-
-# Format code (required before commit)
 ./gradlew clean spotlessApply
-
-# Run tests only
-./gradlew test
+./gradlew clean build
 ```
 
-Repository integration tests use `PostgreSQLContainer`, so Docker must be available when running
-the full test suite.
+- Inspect the full build output and fix Checkstyle warnings even if Gradle exits
+  successfully.
+- Use `./gradlew test --tests "FullyQualifiedTestClass"` for focused iteration;
+  it does not replace the required full build.
+- Ensure Docker is available when the affected test set includes
+  Testcontainers-backed integration tests.
+- For migration changes, inspect the complete ordered migration history and
+  verify the role-permission action hierarchy in addition to running the build.
+- For documentation-only changes, run `git diff --check`, verify every changed
+  link target, and run or syntax-check changed commands. Do not run Gradle
+  solely for Markdown changes.
+- Never disable, weaken, or delete an existing test to make a change pass. If an
+  unrelated test is already failing, stop and report it.
+- If any required validation cannot run, state exactly what was not verified
+  and why. Do not claim the work is fully verified.
 
-For CI/release `service-common` artifact resolution, use the single source of
-truth in
-[orchestration/docs/development/service-common-artifact-resolution.md](../orchestration/docs/development/service-common-artifact-resolution.md).
+## Documentation Maintenance
 
-## Testing
-
-**Patterns used:**
-- JUnit 5 with Mockito
-- `@ExtendWith(MockitoExtension.class)`
-- Nested test classes with `@DisplayName`
-- `TestConstants` for reusable test data
-- ArgumentCaptor for verification
-- AssertJ assertions
-
-```bash
-# Find test fixtures
-ls src/test/java/org/budgetanalyzer/permission/
-
-# Run specific test class
-./gradlew test --tests "PermissionServiceTest"
-```
-
-## NOTES FOR AI AGENTS
-
-**Security requirements:**
-- All controller methods MUST have `@PreAuthorize` annotations
-- Exception: `InternalPermissionController#getUserPermissions` is protected by the narrow path rule (`/internal/v1/users/*/permissions`) in `PermissionServiceSecurityConfig` instead of method-level claims auth
-- Use `SecurityContextUtil` to get current user
-
-**Modifying role permissions:**
-- Any migration that changes role-permission mappings (adding new permissions, granting an existing permission to a role, revoking one) **must** be followed by a reminder to the user to sync `ClaimsHeaderTestBuilder` in `../service-common/service-web/src/main/java/org/budgetanalyzer/service/security/test/ClaimsHeaderTestBuilder.java`. That file hard-codes the per-role permission lists (e.g. `ADMIN_PERMISSIONS`) used by `admin()` / `user()` factories, and integration tests across every service will drift if it is not updated alongside the migration.
-- This repo cannot write to `service-common`, so always surface the required change explicitly when the work lands here — do not assume the user will remember.
-- Respect the action hierarchy described in "Action Hierarchy (grant-time invariant)" above: any grant of `{r}:write` or `{r}:delete` must also grant `{r}:read` on the same role (and the same scope). `:write` and `:delete` are independent — neither implies the other. Revocations run upward: remove `{r}:write` and `{r}:delete` before removing `{r}:read`. Downstream literal permission checks depend on this.
-
-**Code style:**
-- Google Java Format enforced via Spotless
-- Run `./gradlew spotlessApply` before committing
-
-**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git operations entirely. You may suggest what to commit, but don't do it.
+- Keep documentation current in the same work as configuration or code changes.
+- Update `AGENTS.md` when instructions, guardrails, workflows, discovery
+  commands, authority boundaries, or source-of-truth ownership changes. Before
+  editing it, read and apply
+  [agents-md-checkstyle.md](../orchestration/docs/agents-md-checkstyle.md).
+- Update `README.md` when setup, usage, public purpose, or human onboarding
+  changes.
+- Update `docs/` when architecture, configuration behavior, APIs, operations,
+  or design rationale changes.
+- Do not update archived documents unless the user explicitly requests it.
+- Keep detailed recurring topics in one owner document and link to it instead
+  of copying the detail into `AGENTS.md`.
+- Do not leave required documentation updates as follow-up work.
 
 ## Web Search Protocol
 
-BEFORE any WebSearch tool call:
-1. Read `Today's date` from `<env>` block
-2. Extract the current year
-3. Use current year in queries about "latest", "best", "current" topics
-4. NEVER use previous years unless explicitly searching historical content
-
-FAILURE MODE: Training data defaults to 2023/2024. Override with `<env>` year.
-
----
-
-## External Links (GitHub Web Viewing)
-
-*The relative paths in this document are optimized for Claude Code. When viewing on GitHub, use these links to access other repositories:*
-
-- [Service-Common Repository](https://github.com/budgetanalyzer/service-common)
-- [Service-Common AGENTS.md](https://github.com/budgetanalyzer/service-common/blob/main/AGENTS.md)
-- [Error Handling Documentation](https://github.com/budgetanalyzer/service-common/blob/main/docs/error-handling.md)
-- [Testing Patterns Documentation](https://github.com/budgetanalyzer/service-common/blob/main/docs/testing-patterns.md)
-- [Code Quality Standards](https://github.com/budgetanalyzer/service-common/blob/main/docs/code-quality-standards.md)
-- [Orchestration Repository](https://github.com/budgetanalyzer/orchestration)
-- [Orchestration AGENTS.md](https://github.com/budgetanalyzer/orchestration/blob/main/AGENTS.md)
+Before searching for current, latest, or best information, read the current
+date from the runtime environment or conversation context and include the
+current year in the query. Never infer the current year from model training
+data. Use earlier years only when intentionally researching historical
+information.

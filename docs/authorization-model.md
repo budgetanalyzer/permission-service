@@ -8,7 +8,7 @@ This service owns RBAC data (roles, permissions, user-role assignments) and expo
 
 ## Data model
 
-Five tables, no magic:
+The model uses direct join tables, no magic:
 
 ```
 users ──< user_roles >── roles ──< role_permissions >── permissions
@@ -33,7 +33,7 @@ The user identity contract is intentionally narrow:
 Active users may therefore share the same email locally. Admin search may filter by email, but any
 feature that needs to identify a single user must use `id` or `idp_sub`.
 
-Resolution happens in one query, `UserRoleRepository.findPermissionIdsByUserId`:
+Resolution happens through `UserRoleRepository.findPermissionIdsByUserId`:
 
 ```sql
 SELECT rp.permissionId FROM UserRole ur
@@ -48,7 +48,6 @@ WHERE ur.userId = :userId
 ADMIN's broad access comes from explicit seed rows, not from any special-case code:
 
 ```sql
--- V2__seed_default_data.sql
 INSERT INTO role_permissions (role_id, permission_id, ...) VALUES
   ('ADMIN', 'transactions:read', ...),
   ...
@@ -93,12 +92,19 @@ The upside is concrete: downstream callers (Session Gateway, UI route guards, co
 
 ### Where the invariant is enforced
 
-The **single enforcement point** is Flyway migrations under `src/main/resources/db/migration/`. Specifically:
+The **single enforcement point** is Flyway migrations under `src/main/resources/db/migration/`.
+Discover every migration that changes grants with:
 
-- `V2__seed_default_data.sql` — the initial ADMIN and USER grants. Both bundles respect the hierarchy today: every `:write` and every `:delete` grant is accompanied by `:read`, including the `:any` scoped variants. Some resources in the current bundles happen to hold `{read, write, delete}` together, but that is a property of those specific grants, not a requirement of the invariant.
-- `V3__add_statement_format_scoped_permissions.sql` — adds statement format `:any` read/write permissions, grants `statementformats:read:any` to ADMIN, converts ADMIN's unscoped `statementformats:write` grant to `statementformats:write:any`, and grants unscoped `statementformats:write` to USER so users can create and maintain their own custom statement formats.
-- Any future migration that inserts into `role_permissions` — the author must grant `{resource}:read` alongside any `{resource}:write` or `{resource}:delete` grant. This includes scoped variants: `{resource}:write:any` and `{resource}:delete:any` each require `{resource}:read:any` on the same role.
-- Any future migration that deletes from `role_permissions` — the author must revoke `{resource}:write` and `{resource}:delete` before or at the same time as removing `{resource}:read`, so the role never transiently holds a modifying action without read.
+```bash
+rg -n "role_permissions" src/main/resources/db/migration
+```
+
+Every migration that inserts into `role_permissions` must grant `{resource}:read` alongside any
+`{resource}:write` or `{resource}:delete` grant. This includes scoped variants:
+`{resource}:write:any` and `{resource}:delete:any` each require `{resource}:read:any` on the same
+role. Every migration that deletes from `role_permissions` must revoke `{resource}:write` and
+`{resource}:delete` before or at the same time as removing `{resource}:read`, so the role never
+transiently holds a modifying action without read.
 
 There is no admin UI for editing grants and no runtime grant surface, so the migration convention is sufficient. If a grant UI is ever added, it must either bundle the lower tiers automatically (selecting `:write` auto-selects `:read`) or refuse to save a violating set.
 
@@ -107,11 +113,11 @@ There is no admin UI for editing grants and no runtime grant surface, so the mig
 - **`:write` and `:delete` are independent.** Holding `currencies:write` says nothing about `currencies:delete`, and vice versa. Each is a separate authority unit that independently requires `:read`.
 - **Different resources are independent.** Holding `currencies:write` says nothing about `transactions:read`.
 - **Scoped and unscoped are independent.** Holding `transactions:write:any` does not imply `transactions:write` — those are separate authority units. The invariant runs within a scope, not across scopes. Concretely: `transactions:write:any` implies `transactions:read:any`, and `transactions:write` implies `transactions:read`, but neither implies the other.
-- **Own-resource `views:*` is a self-contained bundle.** The three view permissions follow the invariant among themselves (USER holds all three today). There are no scoped `views:*:any` variants yet; when they are added they must follow the same internal rule.
+- **Own-resource `views:*` is a self-contained bundle.** Its current permissions follow the invariant among themselves. There are no scoped `views:*:any` variants yet; when they are added they must follow the same internal rule.
 
 ### Drift risk and the optional safety net
 
-"Enforced by convention in migrations" is not a database constraint — a future migration could violate it, or a hand-edited row could. Two cheap safety nets exist if drift becomes a real concern:
+"Enforced by convention in migrations" is not a database constraint — a future migration could violate it, or a hand-edited row could. Cheap safety nets include:
 
 - **Migration-author checklist.** Keep the invariant prominent in `AGENTS.md`, this document, and in a comment block above the `role_permissions` grants in `V2__seed_default_data.sql` so the next migration author sees it at the grant surface before writing rows. This is the current approach. Any future migration that touches `role_permissions` should repeat the rule in its own header comment.
 - **Test-time assertion.** `SeedDataIntegrationTest` already loads the full seed set per role. A one-method assertion that walks each role's permissions and checks "for every `{r}:write` the role holds `{r}:read`, and for every `{r}:delete` the role holds `{r}:read`" would catch any violating migration in CI without adding runtime code. Optional — add it only if a real violation is ever observed or a grant UI is introduced.
@@ -150,13 +156,13 @@ Keying the UI off permissions means the frontend mirrors the server's invariant 
 If the "limited admin" or "custom permission set per user" requirement ever surfaces, these are the documented options in order of disruption:
 
 1. **Narrow roles (composition).** Define `BUDGET_ADMIN`, `USER_ADMIN`, `AUDIT_READER`, etc., and assign combinations. Works today with zero schema change. Risk: role explosion if dimensions multiply.
-2. **Additive user-level grants (delta table).** Add a `user_permissions` table that is purely additive — "Alice gets `audit:read` on top of her USER role." Resolution becomes `UNION` of role-derived and user-derived sets. ~20 line change in `UserRoleRepository`. Keeps role-as-bundle invariant intact.
+2. **Additive user-level grants (delta table).** Add a `user_permissions` table that is purely additive — "Alice gets `audit:read` on top of her USER role." Resolution becomes `UNION` of role-derived and user-derived sets. Keeps role-as-bundle invariant intact.
 3. **Scoped RBAC (RBAC + ABAC).** Keep coarse roles and add a scope attribute ("admin over tenant X", "admin over owned accounts"). Requires every downstream service to apply the scope when filtering queries. Matches the pattern used by AWS IAM, GCP IAM, Azure RBAC.
 4. **External policy engine (Cerbos / OPA / Oso / SpiceDB).** Move authorization decisions out of tables and into a rules engine. Warranted only at much larger scale.
 
 ### Deferred: grant/revocation audit trail
 
-`UserRole` and `RolePermission` currently extend `AuditableEntity`, which means `createdAt`/`createdBy` capture when a grant was made but nothing captures when one is revoked — `repository.delete(...)` removes the row entirely. This is acceptable today because there is no revocation flow: no controller, no service method, no admin UI deletes these rows. Seed data in `V2__seed_default_data.sql` is the only writer.
+`UserRole` and `RolePermission` currently extend `AuditableEntity`, which means `createdAt`/`createdBy` capture when a grant was made but nothing captures when one is revoked — `repository.delete(...)` removes the row entirely. This is acceptable today because there is no runtime revocation flow: no controller, no service method, and no admin UI deletes these rows. Flyway migrations are the only writers.
 
 When a revocation flow is added, choose between:
 
@@ -179,8 +185,7 @@ If per-user exceptions are ever needed, use option 2 (additive delta) instead. I
 
 ## Quick reference
 
-- **Where permissions are defined:** `db/migration/V*.sql`
-- **Where ADMIN's 13-permission non-view bundle is defined:** `db/migration/V2__seed_default_data.sql`
+- **Where permissions and default role bundles are defined:** Derive the current state from the complete ordered history under `src/main/resources/db/migration/`; do not maintain copied counts here.
 - **Resolver query:** `UserRoleRepository.findPermissionIdsByUserId`
 - **DTO returned to downstream services:** `service/dto/EffectivePermissions.java` (fields: `roles`, `permissions`)
 - **Admin user detail response shape:** `api/response/UserDetailResponse.java` (`deactivatedBy` and `deletedBy` are nullable `UserReference { id, displayName, email }` objects)
