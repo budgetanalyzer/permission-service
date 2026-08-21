@@ -87,9 +87,10 @@ rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.
   before writing or modifying Java code. Do not skip this prerequisite.
 - **Errors and tests:** Read
   [error-handling.md](../service-common/docs/error-handling.md) when changing
-  error flows or custom exceptions. Read
-  [testing-patterns.md](../service-common/docs/testing-patterns.md) when writing
-  or modifying tests.
+  error flows or custom exceptions. Do not mock or spy application-owned
+  Spring beans. Before writing or modifying tests, read
+  [testing-patterns.md](../service-common/docs/testing-patterns.md) and follow
+  its guidance for real components and concrete test implementations.
 - **Session-edge and deployment architecture:** Read
   [system-overview.md](../orchestration/docs/architecture/system-overview.md),
   [session-edge-authorization-pattern.md](../orchestration/docs/architecture/session-edge-authorization-pattern.md),

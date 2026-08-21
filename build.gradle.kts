@@ -62,6 +62,7 @@ dependencies {
     testImplementation(libs.testcontainers)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.wiremock.standalone)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
