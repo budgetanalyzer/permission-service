@@ -150,25 +150,33 @@ class UserServiceIntegrationTest extends PermissionServiceIntegrationTestSupport
       persistUser("usr_search03", "oidc|search-3", "three@example.com", "Three");
       assignRoles("usr_search01", TestConstants.ROLE_USER);
       assignRoles("usr_search02", TestConstants.ROLE_USER, TestConstants.ROLE_ADMIN);
-      var pageable = PageRequest.of(0, 2, Sort.by("id"));
+      var pageable = PageRequest.of(0, 4, Sort.by("id"));
 
       var result = userService.search(UserFilter.empty(), pageable);
 
-      assertThat(result.getTotalElements()).isEqualTo(3);
+      assertThat(result.getTotalElements()).isEqualTo(4);
       assertThat(result.getContent())
           .extracting(userWithRoles -> userWithRoles.user().getId())
-          .containsExactly("usr_search01", "usr_search02");
-      assertThat(result.getContent().get(0).roleIds()).containsExactly(TestConstants.ROLE_USER);
-      assertThat(result.getContent().get(1).roleIds())
+          .containsExactly(
+              TestConstants.SYSTEM_USER_ID, "usr_search01", "usr_search02", "usr_search03");
+      assertThat(result.getContent().get(0).roleIds()).isEmpty();
+      assertThat(result.getContent().get(1).roleIds()).containsExactly(TestConstants.ROLE_USER);
+      assertThat(result.getContent().get(2).roleIds())
           .containsExactly(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER);
     }
 
     @Test
-    void returnsAnEmptyPageWhenNoPersistedUsersMatch() {
+    void returnsMigratedSystemUserWhenNoTestUsersArePersisted() {
       var result = userService.search(UserFilter.empty(), PageRequest.of(0, 5));
 
-      assertThat(result.getContent()).isEmpty();
-      assertThat(result.getTotalElements()).isZero();
+      assertThat(result.getContent())
+          .singleElement()
+          .satisfies(
+              userWithRoles -> {
+                assertThat(userWithRoles.user().getId()).isEqualTo(TestConstants.SYSTEM_USER_ID);
+                assertThat(userWithRoles.roleIds()).isEmpty();
+              });
+      assertThat(result.getTotalElements()).isOne();
     }
   }
 

@@ -4,6 +4,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 
 import java.util.Arrays;
 
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -23,6 +24,7 @@ import org.budgetanalyzer.permission.repository.UserRoleRepository;
 @SpringBootTest(
     properties = {
       "spring.flyway.enabled=true",
+      "spring.flyway.clean-disabled=false",
       "spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect",
       "spring.jpa.hibernate.ddl-auto=validate",
       "session-gateway.revocation.max-attempts=3",
@@ -41,6 +43,8 @@ public abstract class PermissionServiceIntegrationTestSupport {
 
   @Autowired protected UserRoleRepository userRoleRepository;
 
+  @Autowired private Flyway flyway;
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry dynamicPropertyRegistry) {
     dynamicPropertyRegistry.add("spring.datasource.url", postgreSQLContainer::getJdbcUrl);
@@ -52,12 +56,12 @@ public abstract class PermissionServiceIntegrationTestSupport {
         "session-gateway.base-url", () -> wireMockServer.baseUrl() + "/session-gateway");
   }
 
-  /** Resets persisted user state and Session Gateway HTTP stubs before each test. */
+  /** Restores the migrated database baseline and resets Session Gateway HTTP stubs. */
   @BeforeEach
   protected void resetPersistenceAndExternalBoundary() {
     wireMockServer.resetAll();
-    userRoleRepository.deleteAllInBatch();
-    userRepository.deleteAllInBatch();
+    flyway.clean();
+    flyway.migrate();
   }
 
   /**

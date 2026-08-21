@@ -78,7 +78,7 @@ class UserSyncServiceIntegrationTest extends PermissionServiceIntegrationTestSup
         .get()
         .extracting("email", "displayName")
         .containsExactly("old@example.com", "Old Name");
-    assertThat(userRepository.count()).isOne();
+    assertThat(userRepository.count()).isEqualTo(2);
   }
 
   @Test
@@ -99,7 +99,7 @@ class UserSyncServiceIntegrationTest extends PermissionServiceIntegrationTestSup
         .get()
         .extracting(User::getId)
         .isEqualTo(result.getId());
-    assertThat(userRepository.count()).isEqualTo(2);
+    assertThat(userRepository.count()).isEqualTo(3);
     assertThat(userRoleRepository.findRoleIdsByUserId(result.getId()))
         .containsExactly(TestConstants.ROLE_USER);
   }
