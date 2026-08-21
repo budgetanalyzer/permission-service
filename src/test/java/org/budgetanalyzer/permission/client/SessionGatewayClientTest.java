@@ -1,50 +1,54 @@
 package org.budgetanalyzer.permission.client;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.ResourceAccessException;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.http.Fault;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
 import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.config.SessionRevocationProperties;
 
-@ExtendWith(MockitoExtension.class)
 @DisplayName("SessionGatewayClient")
 class SessionGatewayClientTest {
 
-  @Mock private RestClient restClient;
-  @Mock private RestClient.RequestHeadersUriSpec<?> deleteSpec;
-  @Mock private RestClient.RequestHeadersSpec<?> headersSpec;
-  @Mock private RestClient.ResponseSpec responseSpec;
+  private static final String REVOCATION_PATH =
+      "/session-gateway/internal/v1/sessions/users/" + TestConstants.TEST_USER_ID;
+  private static final String RETRY_SCENARIO = "retry session revocation";
+  private static final String RETRY_SUCCEEDED = "retry succeeded";
 
+  private WireMockServer wireMockServer;
   private SessionGatewayClient sessionGatewayClient;
 
-  @SuppressWarnings("unchecked")
   @BeforeEach
   void setUp() {
-    var properties = new SessionRevocationProperties(3, Duration.ZERO, 2.0, Duration.ZERO);
-    sessionGatewayClient = new SessionGatewayClient(restClient, properties);
-    when(restClient.delete()).thenReturn((RestClient.RequestHeadersUriSpec) deleteSpec);
-    when(deleteSpec.uri(anyString(), any(Object[].class)))
-        .thenReturn((RestClient.RequestHeadersSpec) headersSpec);
+    wireMockServer = new WireMockServer(wireMockConfig().dynamicPort());
+    wireMockServer.start();
+    sessionGatewayClient = createSessionGatewayClient(wireMockServer.baseUrl());
+  }
+
+  @AfterEach
+  void stopWireMockServer() {
+    if (wireMockServer.isRunning()) {
+      wireMockServer.stop();
+    }
   }
 
   @Nested
@@ -52,109 +56,98 @@ class SessionGatewayClientTest {
   class RevokeUserSessionsTests {
 
     @Test
-    @DisplayName("should return revoked on success")
-    void shouldReturnRevokedOnSuccess() {
-      // Arrange
-      when(headersSpec.retrieve()).thenReturn(responseSpec);
-      when(responseSpec.toBodilessEntity()).thenReturn(mock(ResponseEntity.class));
+    void shouldSendDeleteRequestAndReturnRevokedOnSuccess() {
+      wireMockServer.stubFor(delete(urlEqualTo(REVOCATION_PATH)).willReturn(noContent()));
 
-      // Act
       var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
 
-      // Assert
       assertThat(result.revoked()).isTrue();
       assertThat(result.retryExhausted()).isFalse();
+      wireMockServer.verify(1, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
 
     @Test
-    @DisplayName("should return revoked after transient connection failure")
-    void shouldReturnRevokedAfterTransientFailure() {
-      // Arrange
-      when(headersSpec.retrieve())
-          .thenThrow(new ResourceAccessException("Connection refused"))
-          .thenReturn(responseSpec);
-      when(responseSpec.toBodilessEntity()).thenReturn(mock(ResponseEntity.class));
+    void shouldReturnRevokedAfterTransientConnectionFailure() {
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH))
+              .inScenario(RETRY_SCENARIO)
+              .whenScenarioStateIs(Scenario.STARTED)
+              .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER))
+              .willSetStateTo(RETRY_SUCCEEDED));
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH))
+              .inScenario(RETRY_SCENARIO)
+              .whenScenarioStateIs(RETRY_SUCCEEDED)
+              .willReturn(noContent()));
 
-      // Act
       var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
 
-      // Assert
       assertThat(result.revoked()).isTrue();
       assertThat(result.retryExhausted()).isFalse();
-      verify(restClient, times(2)).delete();
+      wireMockServer.verify(2, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
 
-    @Test
-    @DisplayName("should return revoked after transient server error")
-    void shouldReturnRevokedAfterTransientServerError() {
-      // Arrange
-      var serverError = mock(RestClientResponseException.class);
-      when(serverError.getStatusCode()).thenReturn(HttpStatus.INTERNAL_SERVER_ERROR);
-      when(serverError.getMessage()).thenReturn("Internal Server Error");
-      when(headersSpec.retrieve()).thenReturn(responseSpec);
-      when(responseSpec.toBodilessEntity())
-          .thenThrow(serverError)
-          .thenReturn(mock(ResponseEntity.class));
+    @ParameterizedTest
+    @ValueSource(ints = {429, 500})
+    void shouldReturnRevokedAfterRetryableHttpStatus(int retryableStatus) {
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH))
+              .inScenario(RETRY_SCENARIO)
+              .whenScenarioStateIs(Scenario.STARTED)
+              .willReturn(aResponse().withStatus(retryableStatus))
+              .willSetStateTo(RETRY_SUCCEEDED));
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH))
+              .inScenario(RETRY_SCENARIO)
+              .whenScenarioStateIs(RETRY_SUCCEEDED)
+              .willReturn(noContent()));
 
-      // Act
       var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
 
-      // Assert
       assertThat(result.revoked()).isTrue();
       assertThat(result.retryExhausted()).isFalse();
-      verify(restClient, times(2)).delete();
+      wireMockServer.verify(2, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
 
     @Test
-    @DisplayName("should return retry exhausted on persistent connection failure")
-    void shouldReturnRetryExhaustedOnPersistentFailure() {
-      // Arrange
-      when(headersSpec.retrieve()).thenThrow(new ResourceAccessException("Connection refused"));
-
-      // Act
-      var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
-
-      // Assert
-      assertThat(result.revoked()).isFalse();
-      assertThat(result.retryExhausted()).isTrue();
-      verify(restClient, times(3)).delete();
-    }
-
-    @Test
-    @DisplayName("should not retry non-retryable client error")
     void shouldNotRetryNonRetryableClientError() {
-      // Arrange
-      var clientError = mock(RestClientResponseException.class);
-      when(clientError.getStatusCode()).thenReturn(HttpStatus.BAD_REQUEST);
-      when(headersSpec.retrieve()).thenReturn(responseSpec);
-      when(responseSpec.toBodilessEntity()).thenThrow(clientError);
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH)).willReturn(aResponse().withStatus(400)));
 
-      // Act
       var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
 
-      // Assert
       assertThat(result.revoked()).isFalse();
       assertThat(result.retryExhausted()).isFalse();
-      verify(restClient).delete();
+      wireMockServer.verify(1, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
 
     @Test
-    @DisplayName("should return retry exhausted on persistent server error")
     void shouldReturnRetryExhaustedOnPersistentServerError() {
-      // Arrange
-      var serverError = mock(RestClientResponseException.class);
-      when(serverError.getStatusCode()).thenReturn(HttpStatus.INTERNAL_SERVER_ERROR);
-      when(serverError.getMessage()).thenReturn("Internal Server Error");
-      when(headersSpec.retrieve()).thenReturn(responseSpec);
-      when(responseSpec.toBodilessEntity()).thenThrow(serverError);
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH)).willReturn(aResponse().withStatus(503)));
 
-      // Act
       var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
 
-      // Assert
       assertThat(result.revoked()).isFalse();
       assertThat(result.retryExhausted()).isTrue();
-      verify(restClient, times(3)).delete();
+      wireMockServer.verify(3, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
+
+    @Test
+    void shouldReturnRetryExhaustedOnPersistentConnectionFailure() {
+      wireMockServer.stop();
+
+      var result = sessionGatewayClient.revokeUserSessions(TestConstants.TEST_USER_ID);
+
+      assertThat(result.revoked()).isFalse();
+      assertThat(result.retryExhausted()).isTrue();
+    }
+  }
+
+  private SessionGatewayClient createSessionGatewayClient(String baseUrl) {
+    var restClient = RestClient.builder().baseUrl(baseUrl + "/session-gateway").build();
+    var sessionRevocationProperties =
+        new SessionRevocationProperties(3, Duration.ZERO, 1.0, Duration.ZERO);
+    return new SessionGatewayClient(restClient, sessionRevocationProperties);
   }
 }

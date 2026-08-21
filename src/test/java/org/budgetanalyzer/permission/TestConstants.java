@@ -4,6 +4,7 @@ package org.budgetanalyzer.permission;
 public final class TestConstants {
 
   // User IDs
+  public static final String SYSTEM_USER_ID = "SYSTEM";
   public static final String TEST_USER_ID = "usr_test123";
   public static final String TEST_ADMIN_ID = "usr_admin456";
 

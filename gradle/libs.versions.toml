@@ -44,3 +44,4 @@ h2 = { module = "com.h2database:h2" }
 testcontainers = { module = "org.testcontainers:testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
+wiremock-standalone = { module = "org.wiremock:wiremock-standalone" }
