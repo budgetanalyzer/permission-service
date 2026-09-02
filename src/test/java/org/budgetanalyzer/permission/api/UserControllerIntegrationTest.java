@@ -23,7 +23,7 @@ import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 
 @AutoConfigureMockMvc
 @DisplayName("UserController")
-class UserControllerTest extends PermissionServiceIntegrationTestSupport {
+class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupport {
 
   private static final String REVOCATION_PATH =
       "/session-gateway/internal/v1/sessions/users/" + TestConstants.TEST_USER_ID;

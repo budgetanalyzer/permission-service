@@ -19,7 +19,7 @@ import org.budgetanalyzer.permission.service.PermissionServiceIntegrationTestSup
 
 @AutoConfigureMockMvc
 @DisplayName("InternalPermissionController")
-class InternalPermissionControllerTest extends PermissionServiceIntegrationTestSupport {
+class InternalPermissionControllerIntegrationTest extends PermissionServiceIntegrationTestSupport {
 
   @Autowired private MockMvc mockMvc;
 
