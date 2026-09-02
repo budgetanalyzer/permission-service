@@ -27,7 +27,7 @@ import org.budgetanalyzer.permission.TestConstants;
 import org.budgetanalyzer.permission.config.SessionRevocationProperties;
 
 @DisplayName("SessionGatewayClient")
-class SessionGatewayClientTest {
+class SessionGatewayClientIntegrationTest {
 
   private static final String REVOCATION_PATH =
       "/session-gateway/internal/v1/sessions/users/" + TestConstants.TEST_USER_ID;
