@@ -79,8 +79,8 @@ rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.
   dependencies, test gates, or coverage gates.
 - **Dependency automation workflows:** Read
   [dependency-automation.md](docs/dependency-automation.md) before changing
-  Renovate, graph submission, build workflow triggers, trial evidence
-  measurement, caches, or artifact uploads.
+  Renovate, graph submission, build workflow triggers, caches, or artifact
+  uploads.
 - **Shared Spring architecture:** Read
   [spring-boot-conventions.md](../service-common/docs/spring-boot-conventions.md)
   when changing layers, entities, controllers, dependency injection, or HTTP

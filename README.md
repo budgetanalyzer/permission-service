@@ -103,7 +103,8 @@ Two default roles (ADMIN, USER) are managed exclusively via Flyway migrations, n
 See [docs/authorization-model.md](docs/authorization-model.md) for the role/permission data model, rationale, and UI authorization guidance.
 
 See [docs/dependency-automation.md](docs/dependency-automation.md) for Renovate
-discovery, dependency graph submission, and bot pull request checks.
+discovery, dependency graph submission, CI artifact retention, and bot pull
+request checks.
 
 ## Related Repositories
 
