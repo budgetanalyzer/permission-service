@@ -77,6 +77,10 @@ rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.
 - **Build and dependencies:** Read `build.gradle.kts`, `settings.gradle.kts`,
   and `gradle/libs.versions.toml` before changing the toolchain, plugins,
   dependencies, test gates, or coverage gates.
+- **Dependency automation workflows:** Read
+  [dependency-automation.md](docs/dependency-automation.md) before changing
+  Renovate, graph submission, build workflow triggers, caches, or artifact
+  uploads.
 - **Shared Spring architecture:** Read
   [spring-boot-conventions.md](../service-common/docs/spring-boot-conventions.md)
   when changing layers, entities, controllers, dependency injection, or HTTP
