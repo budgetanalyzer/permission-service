@@ -35,10 +35,11 @@ Remote package resolution uses `SERVICE_COMMON_PACKAGES_USERNAME` and
 `SERVICE_COMMON_PACKAGES_READ_TOKEN`, exposed to Gradle as `GITHUB_ACTOR` and
 `GITHUB_TOKEN`. These package-read credentials are distinct from
 `${{ github.token }}`, which the action uses to submit the graph under the
-job's only elevated permission, `contents: write`. Before graph generation, a
-preflight checks the exact `spring-platform` and `service-web` POMs used by
-this service. The snapshot is submitted directly and is not retained as an
-artifact or published as a Build Scan.
+job's only elevated permission, `contents: write`. Gradle resolution is
+authoritative for both release and timestamped snapshot artifacts; do not add
+manual artifact URL probes that duplicate Gradle's Maven metadata handling.
+The graph snapshot is submitted directly and is not retained as an artifact or
+published as a Build Scan.
 
 The workflow must fail when package credentials are missing, either pinned
 `service-common` artifact cannot be resolved, graph generation is incomplete,
