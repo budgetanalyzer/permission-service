@@ -8,11 +8,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import org.budgetanalyzer.permission.api.response.InternalAuthorizationResponse;
 import org.budgetanalyzer.permission.api.response.InternalPermissionsResponse;
 import org.budgetanalyzer.permission.service.PermissionService;
 import org.budgetanalyzer.permission.service.UserSyncService;
+import org.budgetanalyzer.service.api.ApiErrorResponse;
 
 /**
  * Internal controller for gateway permission lookups.
@@ -53,5 +59,27 @@ public class InternalPermissionController {
     var effective = permissionService.getEffectivePermissions(user.getId());
     return new InternalPermissionsResponse(
         user.getId(), effective.roles(), effective.permissions());
+  }
+
+  @Operation(
+      summary = "Get current user authorization by internal user ID",
+      description =
+          "Returns the current account status and effective grants without creating or updating "
+              + "the user. Deactivated users return empty role and permission collections.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Current authorization retrieved successfully",
+        content = @Content(schema = @Schema(implementation = InternalAuthorizationResponse.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "User not found",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+  })
+  @GetMapping(path = "/{userId}/authorization", produces = "application/json")
+  public InternalAuthorizationResponse getUserAuthorization(
+      @Parameter(description = "Internal user ID", example = "usr_abc123") @PathVariable
+          String userId) {
+    return InternalAuthorizationResponse.from(permissionService.getUserAuthorization(userId));
   }
 }
