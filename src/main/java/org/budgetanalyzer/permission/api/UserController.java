@@ -59,10 +59,6 @@ public class UserController {
     @ApiResponse(
         responseCode = "400",
         description = "Invalid request",
-        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
-    @ApiResponse(
-        responseCode = "403",
-        description = "Insufficient permissions",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
   })
   @GetMapping(produces = "application/json")
@@ -92,10 +88,6 @@ public class UserController {
         description = "User retrieved successfully",
         content = @Content(schema = @Schema(implementation = UserDetailResponse.class))),
     @ApiResponse(
-        responseCode = "403",
-        description = "Insufficient permissions",
-        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
-    @ApiResponse(
         responseCode = "404",
         description = "User not found",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
@@ -118,10 +110,6 @@ public class UserController {
         responseCode = "200",
         description = "User deactivated successfully",
         content = @Content(schema = @Schema(implementation = UserDeactivationResponse.class))),
-    @ApiResponse(
-        responseCode = "403",
-        description = "Insufficient permissions",
-        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
     @ApiResponse(
         responseCode = "404",
         description = "User not found",

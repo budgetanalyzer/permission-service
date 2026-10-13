@@ -1,0 +1,76 @@
+package org.budgetanalyzer.permission.api;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.budgetanalyzer.permission.service.PermissionServiceIntegrationTestSupport;
+
+@AutoConfigureMockMvc
+class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestSupport {
+
+  private static final String API_ERROR_RESPONSE_REFERENCE =
+      "#/components/schemas/ApiErrorResponse";
+
+  @Autowired private MockMvc mockMvc;
+
+  @Autowired private ObjectMapper objectMapper;
+
+  @Test
+  void shouldGenerateExpectedUserApiSecurityDocumentation() throws Exception {
+    var openApiJsonNode = readOpenApiDocument();
+
+    assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users/get"));
+    assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users~1{id}/get"));
+    assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users~1{id}~1deactivate/post"));
+    var internalPermissionOperationJsonNode =
+        openApiJsonNode.at("/paths/~1internal~1v1~1users~1{idpSub}~1permissions/get");
+
+    assertThat(internalPermissionOperationJsonNode.isMissingNode()).isFalse();
+    assertThat(internalPermissionOperationJsonNode.at("/responses/401").isMissingNode()).isTrue();
+    assertThat(internalPermissionOperationJsonNode.at("/responses/403").isMissingNode()).isTrue();
+    assertThat(openApiJsonNode.at("/paths/~1v1~1users/get/responses/400/description").asText())
+        .isEqualTo("Invalid request");
+    assertThat(
+            openApiJsonNode.at("/paths/~1v1~1users~1{id}/get/responses/404/description").asText())
+        .isEqualTo("User not found");
+    assertThat(
+            openApiJsonNode
+                .at("/paths/~1v1~1users~1{id}~1deactivate/post/responses/503/description")
+                .asText())
+        .isEqualTo("Session revocation failed after retry; user was deactivated, retry is safe");
+  }
+
+  private JsonNode readOpenApiDocument() throws Exception {
+    var responseBody =
+        mockMvc
+            .perform(get("/permission-service/v3/api-docs").contextPath("/permission-service"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    return objectMapper.readTree(responseBody);
+  }
+
+  private void assertSecurityResponses(JsonNode operationJsonNode) {
+    assertThat(operationJsonNode.isMissingNode()).isFalse();
+    assertApiErrorResponseReference(operationJsonNode, "401");
+    assertApiErrorResponseReference(operationJsonNode, "403");
+  }
+
+  private void assertApiErrorResponseReference(JsonNode operationJsonNode, String responseCode) {
+    assertThat(
+            operationJsonNode
+                .at("/responses/" + responseCode + "/content/application~1json/schema/$ref")
+                .asText())
+        .isEqualTo(API_ERROR_RESPONSE_REFERENCE);
+  }
+}
