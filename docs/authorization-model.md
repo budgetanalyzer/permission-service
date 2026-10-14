@@ -43,6 +43,35 @@ WHERE ur.userId = :userId
 
 `PermissionService.getEffectivePermissions` returns a flat `EffectivePermissions(Set<String> roles, Set<String> permissions)` DTO containing both the user's role ids and the union of permission ids across those roles. There is no `if (role == ADMIN)` branch anywhere in the service.
 
+## Internal authorization lookups
+
+Session Gateway uses two deliberately separate internal contracts:
+
+- `GET /internal/v1/users/{idpSub}/permissions` is the login-time contract. It
+  synchronizes IdP-owned profile fields, creates a missing user, and assigns the
+  default role on first login.
+- `GET /internal/v1/users/{userId}/authorization` is the heartbeat contract. It
+  keys lookup by the canonical internal ID already stored in the Redis session
+  and returns `{ userId, status, roles, permissions }` without invoking user
+  synchronization or writing persistence state.
+
+The heartbeat lookup returns current effective grants only for an `ACTIVE`
+account. An active account with no grants remains `ACTIVE` and returns empty
+collections. A `DEACTIVATED` account returns empty role and permission
+collections even if stale assignments remain. Missing and soft-deleted users
+return 404. The claims-header exception is scoped to the exact GET routes;
+orchestration owns mesh identity and caller restrictions.
+
+## Deactivation and revocation retries
+
+Deactivation commits the account status and role removal before calling Session
+Gateway for bounded bulk revocation. Repeating the request for an already
+deactivated account does not rewrite the original deactivation actor or time and
+reports zero additional roles removed, but it still attempts revocation on every
+request. The API returns 200 only after revocation succeeds, including an
+idempotent success when no sessions remain. If retries are exhausted, it returns
+503 again and remains safe for the caller to retry.
+
 ## The ADMIN seed bundle convention
 
 ADMIN's broad access comes from explicit seed rows, not from any special-case code:
@@ -187,7 +216,8 @@ If per-user exceptions are ever needed, use option 2 (additive delta) instead. I
 
 - **Where permissions and default role bundles are defined:** Derive the current state from the complete ordered history under `src/main/resources/db/migration/`; do not maintain copied counts here.
 - **Resolver query:** `UserRoleRepository.findPermissionIdsByUserId`
-- **DTO returned to downstream services:** `service/dto/EffectivePermissions.java` (fields: `roles`, `permissions`)
+- **Login permission DTO:** `service/dto/EffectivePermissions.java` (fields: `roles`, `permissions`)
+- **Heartbeat authorization view:** `service/dto/UserAuthorizationView.java` (fields: `userId`, `status`, `roles`, `permissions`)
 - **Admin user detail response shape:** `api/response/UserDetailResponse.java` (`deactivatedBy` and `deletedBy` are nullable `UserReference { id, displayName, email }` objects)
 - **UI rule of thumb:** roles for layouts, permissions for actions
 - **Action hierarchy rule of thumb:** both `:write` and `:delete` require `:read` on the same resource/scope; `:write` and `:delete` are independent of each other. Downstream checks stay literal.

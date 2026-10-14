@@ -96,7 +96,18 @@ Two default roles (ADMIN, USER) are managed exclusively via Flyway migrations, n
 
 **User administration** — Search and view users with their role assignments. Deactivate users, which removes their roles and revokes active sessions.
 
-**Permission resolution** — Internal endpoint that syncs a user from the identity provider and returns their resolved permissions. Called by Session Gateway during login, token exchange, and session refresh.
+**Permission resolution** — Internal login lookup that syncs IdP profile data and
+returns resolved permissions, plus a separate read-only authorization lookup by
+internal user ID for heartbeat refresh. The read-only lookup returns current
+account status and grants without creating users, assigning defaults, or updating
+profile and audit fields. Deactivated users return empty grants; missing and
+soft-deleted users return 404.
+
+**User deactivation** — Commits deactivation and role removal before attempting
+bounded Session Gateway revocation. Repeating deactivation preserves the original
+actor and timestamp but always retries revocation. A request returns 200 only
+after successful revocation, including when no sessions remain; an exhausted
+attempt returns 503 and remains safe to retry.
 
 ## Architecture
 
@@ -108,7 +119,7 @@ request checks.
 
 ## Related Repositories
 
-- [session-gateway](https://github.com/budgetanalyzer/session-gateway) — Edge authorization; calls the internal endpoint to sync users and resolve permissions
+- [session-gateway](https://github.com/budgetanalyzer/session-gateway) — Edge authorization; syncs users during login and uses the read-only lookup during heartbeat refresh
 - [transaction-service](https://github.com/budgetanalyzer/transaction-service) — Transaction management
 - [currency-service](https://github.com/budgetanalyzer/currency-service) — Currency management
 - [service-common](https://github.com/budgetanalyzer/service-common) — Shared Spring platform and runtime libraries (base entities, exception handling)

@@ -47,6 +47,11 @@ find src/main/resources/db/migration -maxdepth 1 -type f | sort
 rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.kts
 ```
 
+## Path Portability
+
+Use repository-relative, sibling-relative, or dynamically resolved paths.
+Never hardcode machine-specific checkout locations such as `/workspace`.
+
 ## Sources of Truth
 
 - **Purpose, prerequisites, setup, and local use:** Read [README.md](README.md)
@@ -157,12 +162,14 @@ rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.
 ### Security
 
 - Every controller endpoint method must have `@PreAuthorize`.
-- The only exception is
-  `InternalPermissionController#getUserPermissions`, which is protected by the
-  narrow `/internal/v1/users/*/permissions` matcher in
-  `PermissionServiceSecurityConfig`. Do not broaden this anonymous
-  claims-header exception; orchestration must continue restricting callers
-  through mesh identity and authorization policy.
+- The only exceptions are
+  `InternalPermissionController#getUserPermissions` and
+  `InternalPermissionController#getUserAuthorization`. Protect them with the
+  exact GET-only `/internal/v1/users/*/permissions` and
+  `/internal/v1/users/*/authorization` matchers in
+  `PermissionServiceSecurityConfig`. Do not broaden these claims-header
+  exceptions; orchestration must continue restricting callers through mesh
+  identity and authorization policy.
 - Use `SecurityContextUtil` to obtain the current user. Do not accept actor
   identity from a request body or untrusted header in application code.
 - Do not bypass authentication, authorization, persistence, or validation

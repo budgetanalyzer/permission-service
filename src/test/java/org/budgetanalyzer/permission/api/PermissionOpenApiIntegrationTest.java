@@ -33,10 +33,18 @@ class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestS
     assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users~1{id}~1deactivate/post"));
     var internalPermissionOperationJsonNode =
         openApiJsonNode.at("/paths/~1internal~1v1~1users~1{idpSub}~1permissions/get");
+    var internalAuthorizationOperationJsonNode =
+        openApiJsonNode.at("/paths/~1internal~1v1~1users~1{userId}~1authorization/get");
 
     assertThat(internalPermissionOperationJsonNode.isMissingNode()).isFalse();
     assertThat(internalPermissionOperationJsonNode.at("/responses/401").isMissingNode()).isTrue();
     assertThat(internalPermissionOperationJsonNode.at("/responses/403").isMissingNode()).isTrue();
+    assertThat(internalAuthorizationOperationJsonNode.isMissingNode()).isFalse();
+    assertThat(internalAuthorizationOperationJsonNode.at("/responses/401").isMissingNode())
+        .isTrue();
+    assertThat(internalAuthorizationOperationJsonNode.at("/responses/403").isMissingNode())
+        .isTrue();
+    assertApiErrorResponseReference(internalAuthorizationOperationJsonNode, "404");
     assertThat(openApiJsonNode.at("/paths/~1v1~1users/get/responses/400/description").asText())
         .isEqualTo("Invalid request");
     assertThat(

@@ -104,7 +104,9 @@ public class UserController {
       summary = "Deactivate a user",
       description =
           "Marks a user as deactivated, removes all role assignments, and revokes active sessions. "
-              + "Idempotent — deactivating an already-deactivated user returns 200.")
+              + "For an already-deactivated user, preserves the original audit fields and role "
+              + "state but still attempts session revocation. Returns 200 only when revocation "
+              + "succeeds; failed revocation returns 503 and can be retried safely.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",

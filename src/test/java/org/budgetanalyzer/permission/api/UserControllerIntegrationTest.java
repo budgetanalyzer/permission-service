@@ -2,8 +2,10 @@ package org.budgetanalyzer.permission.api;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,6 +27,7 @@ import org.budgetanalyzer.service.security.test.ClaimsHeaderTestBuilder;
 @DisplayName("UserController")
 class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupport {
 
+  private static final String RETRY_ADMIN_ID = "usr_retry789";
   private static final String REVOCATION_PATH =
       "/session-gateway/internal/v1/sessions/users/" + TestConstants.TEST_USER_ID;
 
@@ -217,6 +220,76 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
                           .withPermissions(TestConstants.PERM_USERS_WRITE)))
           .andExpect(status().isServiceUnavailable())
           .andExpect(jsonPath("$.type").value("SERVICE_UNAVAILABLE"));
+    }
+
+    @Test
+    void shouldRetryRevocationWithoutChangingCommittedDeactivation() throws Exception {
+      persistAdminUser();
+      persistUser(RETRY_ADMIN_ID, "oidc|retry-admin", "retry@example.com", "Retry Admin");
+      persistTestUser();
+      assignRoles(TestConstants.TEST_USER_ID, TestConstants.ROLE_USER);
+      wireMockServer.stubFor(
+          delete(urlEqualTo(REVOCATION_PATH)).willReturn(aResponse().withStatus(503)));
+
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_WRITE)))
+          .andExpect(status().isServiceUnavailable())
+          .andExpect(jsonPath("$.type").value("SERVICE_UNAVAILABLE"));
+
+      var userAfterFailedRevocation =
+          userRepository.findById(TestConstants.TEST_USER_ID).orElseThrow();
+      final var originalDeactivatedAt = userAfterFailedRevocation.getDeactivatedAt();
+      assertThat(userAfterFailedRevocation.getDeactivatedBy())
+          .isEqualTo(TestConstants.TEST_ADMIN_ID);
+      assertThat(userRoleRepository.findByUserId(TestConstants.TEST_USER_ID)).isEmpty();
+      wireMockServer.verify(3, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
+
+      wireMockServer.resetMappings();
+      wireMockServer.stubFor(delete(urlEqualTo(REVOCATION_PATH)).willReturn(noContent()));
+
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(RETRY_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_WRITE)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.rolesRemoved").value(0))
+          .andExpect(jsonPath("$.sessionsRevoked").value(true));
+
+      assertThat(userRepository.findById(TestConstants.TEST_USER_ID))
+          .get()
+          .satisfies(
+              persistedUser -> {
+                assertThat(persistedUser.getDeactivatedBy()).isEqualTo(TestConstants.TEST_ADMIN_ID);
+                assertThat(persistedUser.getDeactivatedAt()).isEqualTo(originalDeactivatedAt);
+              });
+      assertThat(userRoleRepository.findByUserId(TestConstants.TEST_USER_ID)).isEmpty();
+      wireMockServer.verify(4, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
+
+      mockMvc
+          .perform(
+              post("/v1/users/{id}/deactivate", TestConstants.TEST_USER_ID)
+                  .with(
+                      ClaimsHeaderTestBuilder.user(RETRY_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_WRITE)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.rolesRemoved").value(0))
+          .andExpect(jsonPath("$.sessionsRevoked").value(true));
+
+      assertThat(userRepository.findById(TestConstants.TEST_USER_ID))
+          .get()
+          .satisfies(
+              persistedUser -> {
+                assertThat(persistedUser.getDeactivatedBy()).isEqualTo(TestConstants.TEST_ADMIN_ID);
+                assertThat(persistedUser.getDeactivatedAt()).isEqualTo(originalDeactivatedAt);
+              });
+      assertThat(userRoleRepository.findByUserId(TestConstants.TEST_USER_ID)).isEmpty();
+      wireMockServer.verify(5, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
   }
 
