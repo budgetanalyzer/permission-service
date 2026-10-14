@@ -47,6 +47,11 @@ find src/main/resources/db/migration -maxdepth 1 -type f | sort
 rg -n 'dependencies|implementation|testImplementation|runtimeOnly' build.gradle.kts
 ```
 
+## Path Portability
+
+Use repository-relative, sibling-relative, or dynamically resolved paths.
+Never hardcode machine-specific checkout locations such as `/workspace`.
+
 ## Sources of Truth
 
 - **Purpose, prerequisites, setup, and local use:** Read [README.md](README.md)
