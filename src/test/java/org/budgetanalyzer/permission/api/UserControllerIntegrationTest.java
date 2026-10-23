@@ -8,14 +8,20 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.sql.Timestamp;
+import java.time.Instant;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import org.budgetanalyzer.permission.TestConstants;
@@ -30,8 +36,13 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
   private static final String RETRY_ADMIN_ID = "usr_retry789";
   private static final String REVOCATION_PATH =
       "/session-gateway/internal/v1/sessions/users/" + TestConstants.TEST_USER_ID;
+  private static final String CREATED_AT = "2026-04-01T12:00:00Z";
+  private static final String UPDATED_AT = "2026-04-08T12:30:45.123456Z";
+  private static final String DEACTIVATED_AT = "2026-04-08T12:30:45.120Z";
 
   @Autowired private MockMvc mockMvc;
+
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   @Nested
   @DisplayName("GET /v1/users")
@@ -44,6 +55,7 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
       persistUser("usr_regular003", "oidc|regular-3", "regular@example.com", "Regular User");
       assignRoles("usr_admin001", TestConstants.ROLE_USER);
       assignRoles("usr_admin002", TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER);
+      setUserTimestamps("usr_admin001", CREATED_AT, UPDATED_AT, null);
 
       mockMvc
           .perform(
@@ -59,12 +71,20 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.content[0].id").value("usr_admin001"))
           .andExpect(jsonPath("$.content[0].roleIds[0]").value(TestConstants.ROLE_USER))
+          .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
+          .andExpect(jsonPath("$.content[0].createdAt").value(CREATED_AT))
+          .andExpect(jsonPath("$.content[0].updatedAt").value(UPDATED_AT))
+          .andExpect(jsonPath("$.content[0].deactivatedAt").doesNotExist())
           .andExpect(jsonPath("$.content[1].id").value("usr_admin002"))
           .andExpect(jsonPath("$.content[1].roleIds[0]").value(TestConstants.ROLE_ADMIN))
           .andExpect(jsonPath("$.content[1].roleIds[1]").value(TestConstants.ROLE_USER))
           .andExpect(jsonPath("$.metadata.page").value(0))
           .andExpect(jsonPath("$.metadata.size").value(5))
-          .andExpect(jsonPath("$.metadata.totalElements").value(2));
+          .andExpect(jsonPath("$.metadata.numberOfElements").value(2))
+          .andExpect(jsonPath("$.metadata.totalElements").value(2))
+          .andExpect(jsonPath("$.metadata.totalPages").value(1))
+          .andExpect(jsonPath("$.metadata.first").value(true))
+          .andExpect(jsonPath("$.metadata.last").value(true));
     }
 
     @Test
@@ -77,7 +97,32 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
                       ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
                           .withPermissions(TestConstants.PERM_USERS_READ)))
           .andExpect(status().isBadRequest())
-          .andExpect(jsonPath("$.type").value("INVALID_REQUEST"));
+          .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.type").value("INVALID_REQUEST"))
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").doesNotExist())
+          .andExpect(jsonPath("$.fieldErrors").doesNotExist());
+    }
+
+    @Test
+    void shouldReturn400WithFieldErrorWhenStatusIsInvalid() throws Exception {
+      mockMvc
+          .perform(
+              get("/v1/users")
+                  .queryParam("status", "BOGUS")
+                  .with(
+                      ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
+                          .withPermissions(TestConstants.PERM_USERS_READ)))
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.type").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").doesNotExist())
+          .andExpect(jsonPath("$.fieldErrors.length()").value(1))
+          .andExpect(jsonPath("$.fieldErrors[0].field").value("status"))
+          .andExpect(jsonPath("$.fieldErrors[0].message").isString())
+          .andExpect(jsonPath("$.fieldErrors[0].rejectedValue").value("BOGUS"))
+          .andExpect(jsonPath("$.fieldErrors[0].index").doesNotExist());
     }
 
     @Test
@@ -86,7 +131,12 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
           .perform(
               get("/v1/users")
                   .with(ClaimsHeaderTestBuilder.user(TestConstants.TEST_USER_ID).withPermissions()))
-          .andExpect(status().isForbidden());
+          .andExpect(status().isForbidden())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.type").value("FORBIDDEN"))
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").doesNotExist())
+          .andExpect(jsonPath("$.fieldErrors").doesNotExist());
     }
   }
 
@@ -101,6 +151,7 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
       user.deactivate(TestConstants.TEST_ADMIN_ID);
       userRepository.saveAndFlush(user);
       assignRoles(TestConstants.TEST_USER_ID, TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER);
+      setUserTimestamps(TestConstants.TEST_USER_ID, CREATED_AT, UPDATED_AT, DEACTIVATED_AT);
 
       mockMvc
           .perform(
@@ -109,13 +160,21 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
                       ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
                           .withPermissions(TestConstants.PERM_USERS_READ)))
           .andExpect(status().isOk())
+          .andExpect(content().contentType(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.id").value(TestConstants.TEST_USER_ID))
+          .andExpect(jsonPath("$.idpSub").value(TestConstants.TEST_IDP_SUB))
+          .andExpect(jsonPath("$.email").value(TestConstants.TEST_EMAIL))
+          .andExpect(jsonPath("$.displayName").value(TestConstants.TEST_DISPLAY_NAME))
           .andExpect(jsonPath("$.roleIds[0]").value(TestConstants.ROLE_ADMIN))
           .andExpect(jsonPath("$.roleIds[1]").value(TestConstants.ROLE_USER))
           .andExpect(jsonPath("$.status").value("DEACTIVATED"))
+          .andExpect(jsonPath("$.createdAt").value(CREATED_AT))
+          .andExpect(jsonPath("$.updatedAt").value(UPDATED_AT))
+          .andExpect(jsonPath("$.deactivatedAt").value(DEACTIVATED_AT))
           .andExpect(jsonPath("$.deactivatedBy.id").value(TestConstants.TEST_ADMIN_ID))
           .andExpect(jsonPath("$.deactivatedBy.displayName").value("Admin User"))
           .andExpect(jsonPath("$.deactivatedBy.email").value("admin@example.com"))
+          .andExpect(jsonPath("$.deletedAt").doesNotExist())
           .andExpect(jsonPath("$.deletedBy").doesNotExist());
     }
 
@@ -146,7 +205,11 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
                       ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
                           .withPermissions(TestConstants.PERM_USERS_READ)))
           .andExpect(status().isNotFound())
-          .andExpect(jsonPath("$.type").value("NOT_FOUND"));
+          .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.type").value("NOT_FOUND"))
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").doesNotExist())
+          .andExpect(jsonPath("$.fieldErrors").doesNotExist());
     }
 
     @Test
@@ -219,7 +282,11 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
                       ClaimsHeaderTestBuilder.user(TestConstants.TEST_ADMIN_ID)
                           .withPermissions(TestConstants.PERM_USERS_WRITE)))
           .andExpect(status().isServiceUnavailable())
-          .andExpect(jsonPath("$.type").value("SERVICE_UNAVAILABLE"));
+          .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.type").value("SERVICE_UNAVAILABLE"))
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").doesNotExist())
+          .andExpect(jsonPath("$.fieldErrors").doesNotExist());
     }
 
     @Test
@@ -291,6 +358,16 @@ class UserControllerIntegrationTest extends PermissionServiceIntegrationTestSupp
       assertThat(userRoleRepository.findByUserId(TestConstants.TEST_USER_ID)).isEmpty();
       wireMockServer.verify(5, deleteRequestedFor(urlEqualTo(REVOCATION_PATH)));
     }
+  }
+
+  private void setUserTimestamps(
+      String userId, String createdAt, String updatedAt, String deactivatedAt) {
+    jdbcTemplate.update(
+        "UPDATE users SET created_at = ?, updated_at = ?, deactivated_at = ? WHERE id = ?",
+        Timestamp.from(Instant.parse(createdAt)),
+        Timestamp.from(Instant.parse(updatedAt)),
+        deactivatedAt == null ? null : Timestamp.from(Instant.parse(deactivatedAt)),
+        userId);
   }
 
   private User persistTestUser() {
