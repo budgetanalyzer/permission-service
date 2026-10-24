@@ -6,11 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import org.budgetanalyzer.permission.service.PermissionServiceIntegrationTestSupport;
 
@@ -22,7 +22,7 @@ class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestS
 
   @Autowired private MockMvc mockMvc;
 
-  @Autowired private ObjectMapper objectMapper;
+  @Autowired private JsonMapper jsonMapper;
 
   @Test
   void shouldGenerateExpectedUserApiSecurityDocumentation() throws Exception {
@@ -45,15 +45,15 @@ class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestS
     assertThat(internalAuthorizationOperationJsonNode.at("/responses/403").isMissingNode())
         .isTrue();
     assertApiErrorResponseReference(internalAuthorizationOperationJsonNode, "404");
-    assertThat(openApiJsonNode.at("/paths/~1v1~1users/get/responses/400/description").asText())
+    assertThat(openApiJsonNode.at("/paths/~1v1~1users/get/responses/400/description").asString())
         .isEqualTo("Invalid request");
     assertThat(
-            openApiJsonNode.at("/paths/~1v1~1users~1{id}/get/responses/404/description").asText())
+            openApiJsonNode.at("/paths/~1v1~1users~1{id}/get/responses/404/description").asString())
         .isEqualTo("User not found");
     assertThat(
             openApiJsonNode
                 .at("/paths/~1v1~1users~1{id}~1deactivate/post/responses/503/description")
-                .asText())
+                .asString())
         .isEqualTo("Session revocation failed after retry; user was deactivated, retry is safe");
   }
 
@@ -65,7 +65,7 @@ class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestS
             .andReturn()
             .getResponse()
             .getContentAsString();
-    return objectMapper.readTree(responseBody);
+    return jsonMapper.readTree(responseBody);
   }
 
   private void assertSecurityResponses(JsonNode operationJsonNode) {
@@ -78,7 +78,7 @@ class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestS
     assertThat(
             operationJsonNode
                 .at("/responses/" + responseCode + "/content/application~1json/schema/$ref")
-                .asText())
+                .asString())
         .isEqualTo(API_ERROR_RESPONSE_REFERENCE);
   }
 }

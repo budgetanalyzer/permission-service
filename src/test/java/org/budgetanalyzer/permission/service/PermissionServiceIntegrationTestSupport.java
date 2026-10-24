@@ -7,11 +7,11 @@ import java.util.Arrays;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 
@@ -37,7 +37,7 @@ public abstract class PermissionServiceIntegrationTestSupport {
 
   protected static final WireMockServer wireMockServer = startWireMockServer();
 
-  private static final PostgreSQLContainer<?> postgreSQLContainer = startPostgreSQLContainer();
+  private static final PostgreSQLContainer postgreSQLContainer = startPostgreSQLContainer();
 
   @Autowired protected UserRepository userRepository;
 
@@ -96,9 +96,9 @@ public abstract class PermissionServiceIntegrationTestSupport {
     return server;
   }
 
-  private static PostgreSQLContainer<?> startPostgreSQLContainer() {
+  private static PostgreSQLContainer startPostgreSQLContainer() {
     var container =
-        new PostgreSQLContainer<>("postgres:17-alpine")
+        new PostgreSQLContainer("postgres:17-alpine")
             .withDatabaseName("testdb")
             .withUsername("test")
             .withPassword("test");

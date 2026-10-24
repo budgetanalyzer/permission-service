@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,7 +14,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import org.budgetanalyzer.permission.TestConstants;
@@ -83,9 +85,12 @@ class InternalPermissionControllerIntegrationTest extends PermissionServiceInteg
               get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
                   .param("email", TestConstants.TEST_EMAIL)
                   .param("displayName", TestConstants.TEST_DISPLAY_NAME))
-          .andExpect(status().isUnprocessableEntity())
+          .andExpect(status().isUnprocessableContent())
+          .andExpect(content().contentType(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.type").value("APPLICATION_ERROR"))
-          .andExpect(jsonPath("$.code").value("USER_DEACTIVATED"));
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").value("USER_DEACTIVATED"))
+          .andExpect(jsonPath("$.fieldErrors").doesNotExist());
     }
   }
 
@@ -204,7 +209,12 @@ class InternalPermissionControllerIntegrationTest extends PermissionServiceInteg
     void shouldRequireClaimsHeadersForOtherMethodsAndUnrelatedInternalRoutes() throws Exception {
       mockMvc
           .perform(post("/internal/v1/users/{userId}/authorization", TestConstants.TEST_USER_ID))
-          .andExpect(status().isUnauthorized());
+          .andExpect(status().isUnauthorized())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.type").value("UNAUTHORIZED"))
+          .andExpect(jsonPath("$.message").isString())
+          .andExpect(jsonPath("$.code").doesNotExist())
+          .andExpect(jsonPath("$.fieldErrors").doesNotExist());
 
       mockMvc
           .perform(
