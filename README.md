@@ -6,7 +6,7 @@
 
 [![Build](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml/badge.svg)](https://github.com/budgetanalyzer/permission-service/actions/workflows/build.yml)
 
-Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and an internal endpoint [Session Gateway](https://github.com/budgetanalyzer/session-gateway) uses during login, token exchange, and heartbeat-driven refresh.
+Authorization data management microservice for the Budget Analyzer application. Manages clean RBAC with 2 default roles (ADMIN, USER), simple join tables for role-permission and user-role mappings, and internal endpoints [Session Gateway](https://github.com/budgetanalyzer/session-gateway) uses during login and heartbeat-driven refresh.
 
 ## Configuration
 
@@ -21,7 +21,6 @@ Authorization data management microservice for the Budget Analyzer application. 
 
 - Java 25
 - PostgreSQL database named `permission`
-- OIDC identity provider configured (issuer URI, audience)
 
 **Local development setup**: See [getting-started.md](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md)
 

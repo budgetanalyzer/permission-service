@@ -4,8 +4,8 @@ import java.util.Set;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** Response DTO for internal permission lookups (used by gateway for JWT minting). */
-@Schema(description = "Internal permissions response for gateway JWT minting")
+/** Response for the login-time internal permission lookup used by Session Gateway. */
+@Schema(description = "Internal login-time permissions response for Session Gateway")
 public record InternalPermissionsResponse(
     @Schema(description = "Internal user ID", example = "usr_abc123") String userId,
     @Schema(description = "Role IDs assigned to the user", example = "[\"USER\"]")
