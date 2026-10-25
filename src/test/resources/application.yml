@@ -20,16 +20,13 @@ spring:
   flyway:
     enabled: false
 
-  data:
-    redis:
-      host: localhost
-      port: 6379
-
   jackson:
     default-property-inclusion: non_null
     serialization:
       indent-output: true
-      write-dates-as-timestamps: false
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
 
 server:
   servlet:

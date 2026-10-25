@@ -23,8 +23,8 @@ import org.budgetanalyzer.service.api.ApiErrorResponse;
 /**
  * Internal controller for gateway permission lookups.
  *
- * <p>Called by the session-gateway to fetch user permissions for JWT minting. Syncs the user on
- * first login if they don't exist yet.
+ * <p>Session Gateway calls the login lookup, which syncs the user and creates them on first login,
+ * and calls the read-only authorization lookup on each heartbeat refresh.
  */
 @Tag(name = "Internal", description = "Internal endpoints for gateway integration")
 @RestController

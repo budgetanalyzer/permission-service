@@ -89,8 +89,10 @@ obey the shared concurrency and labeling policy, and keep automerge disabled.
 
 Observe or manually dispatch one trusted dependency-submission run on `main`.
 The accepted graph must include `spring-platform`, `service-web`, the Spring
-Boot web, security, validation, and JPA stacks, Flyway and PostgreSQL, and the
-H2, Testcontainers, WireMock, Spring Security, and JUnit test trees. Retain the
+Boot Web MVC, security, validation, JPA, and Flyway starters, the Flyway
+PostgreSQL module and PostgreSQL driver, and the test trees for the Spring Boot
+Web MVC, JPA, and security test starters, H2, Testcontainers, WireMock, and
+JUnit. Retain the
 workflow URL and accepted GitHub dependency-graph snapshot as the hosted proof;
 credential-free local graph generation cannot establish remote-resolution or
 submission success.
