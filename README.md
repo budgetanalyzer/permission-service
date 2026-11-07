@@ -95,8 +95,9 @@ Two default roles (ADMIN, USER) are managed exclusively via Flyway migrations, n
 
 **User administration** — Search and view users with their role assignments. Deactivate users, which removes their roles and revokes active sessions.
 
-**Permission resolution** — Internal login lookup that syncs IdP profile data and
-returns resolved permissions, plus a separate read-only authorization lookup by
+**Permission resolution** — Internal login-time user sync POST that takes IdP
+profile data in the request body and returns resolved permissions, plus a
+separate read-only authorization lookup by
 internal user ID for heartbeat refresh. The read-only lookup returns current
 account status and grants without creating users, assigning defaults, or updating
 profile and audit fields. Deactivated users return empty grants; missing and

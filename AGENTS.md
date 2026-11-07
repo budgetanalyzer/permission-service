@@ -163,13 +163,16 @@ Never hardcode machine-specific checkout locations such as `/workspace`.
 
 - Every controller endpoint method must have `@PreAuthorize`.
 - The only exceptions are
-  `InternalPermissionController#getUserPermissions` and
+  `InternalPermissionController#syncUser` and
   `InternalPermissionController#getUserAuthorization`. Protect them with the
-  exact GET-only `/internal/v1/users/*/permissions` and
+  exact POST-only `/internal/v1/users/sync` and GET-only
   `/internal/v1/users/*/authorization` matchers in
   `PermissionServiceSecurityConfig`. Do not broaden these claims-header
   exceptions; orchestration must continue restricting callers through mesh
   identity and authorization policy.
+- Keep login-time user sync a POST with `idpSub`, `email`, and `displayName`
+  in the JSON body. Do not put identity-provider or personal fields in internal
+  URLs.
 - Use `SecurityContextUtil` to obtain the current user. Do not accept actor
   identity from a request body or untrusted header in application code.
 - Do not bypass authentication, authorization, persistence, or validation

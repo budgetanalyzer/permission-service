@@ -31,14 +31,25 @@ class PermissionOpenApiIntegrationTest extends PermissionServiceIntegrationTestS
     assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users/get"));
     assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users~1{id}/get"));
     assertSecurityResponses(openApiJsonNode.at("/paths/~1v1~1users~1{id}~1deactivate/post"));
-    var internalPermissionOperationJsonNode =
-        openApiJsonNode.at("/paths/~1internal~1v1~1users~1{idpSub}~1permissions/get");
+    var internalUserSyncOperationJsonNode =
+        openApiJsonNode.at("/paths/~1internal~1v1~1users~1sync/post");
+    assertThat(internalUserSyncOperationJsonNode.isMissingNode()).isFalse();
+    assertThat(internalUserSyncOperationJsonNode.at("/parameters").isMissingNode()).isTrue();
+    assertThat(
+            internalUserSyncOperationJsonNode
+                .at("/requestBody/content/application~1json/schema/$ref")
+                .asString())
+        .isEqualTo("#/components/schemas/UserSyncRequest");
+    assertThat(internalUserSyncOperationJsonNode.at("/responses/401").isMissingNode()).isTrue();
+    assertThat(internalUserSyncOperationJsonNode.at("/responses/403").isMissingNode()).isTrue();
+    assertApiErrorResponseReference(internalUserSyncOperationJsonNode, "422");
+    assertThat(
+            openApiJsonNode
+                .at("/paths/~1internal~1v1~1users~1{idpSub}~1permissions")
+                .isMissingNode())
+        .isTrue();
     var internalAuthorizationOperationJsonNode =
         openApiJsonNode.at("/paths/~1internal~1v1~1users~1{userId}~1authorization/get");
-
-    assertThat(internalPermissionOperationJsonNode.isMissingNode()).isFalse();
-    assertThat(internalPermissionOperationJsonNode.at("/responses/401").isMissingNode()).isTrue();
-    assertThat(internalPermissionOperationJsonNode.at("/responses/403").isMissingNode()).isTrue();
     assertThat(internalAuthorizationOperationJsonNode.isMissingNode()).isFalse();
     assertThat(internalAuthorizationOperationJsonNode.at("/responses/401").isMissingNode())
         .isTrue();

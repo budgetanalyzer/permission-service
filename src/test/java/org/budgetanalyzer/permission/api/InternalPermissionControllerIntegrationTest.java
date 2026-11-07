@@ -17,8 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import org.budgetanalyzer.permission.TestConstants;
+import org.budgetanalyzer.permission.api.request.UserSyncRequest;
 import org.budgetanalyzer.permission.domain.User;
 import org.budgetanalyzer.permission.service.PermissionServiceIntegrationTestSupport;
 
@@ -26,28 +30,44 @@ import org.budgetanalyzer.permission.service.PermissionServiceIntegrationTestSup
 @DisplayName("InternalPermissionController")
 class InternalPermissionControllerIntegrationTest extends PermissionServiceIntegrationTestSupport {
 
+  private static final String UPDATED_EMAIL = "updated@example.com";
+  private static final String UPDATED_DISPLAY_NAME = "Updated User";
+
   @Autowired private MockMvc mockMvc;
 
+  @Autowired private JsonMapper jsonMapper;
+
   @Nested
-  @DisplayName("GET /internal/v1/users/{idpSub}/permissions")
-  class GetUserPermissionsTests {
+  @DisplayName("POST /internal/v1/users/sync")
+  class SyncUserTests {
 
     @Test
     void shouldCreateUserAndReturnDefaultPermissionsWithoutClaimsHeaders() throws Exception {
       mockMvc
           .perform(
-              get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
-                  .param("email", TestConstants.TEST_EMAIL)
-                  .param("displayName", TestConstants.TEST_DISPLAY_NAME))
+              postUserSync(
+                  new UserSyncRequest(
+                      TestConstants.TEST_IDP_SUB,
+                      TestConstants.TEST_EMAIL,
+                      TestConstants.TEST_DISPLAY_NAME)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.userId", matchesPattern("usr_[0-9a-f]{32}")))
           .andExpect(jsonPath("$.roles[0]").value(TestConstants.ROLE_USER))
           .andExpect(jsonPath("$.permissions", hasItem("transactions:read")))
           .andExpect(jsonPath("$.permissions", hasItem("transactions:write")));
+
+      assertThat(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB))
+          .get()
+          .satisfies(
+              persistedUser -> {
+                assertThat(persistedUser.getEmail()).isEqualTo(TestConstants.TEST_EMAIL);
+                assertThat(persistedUser.getDisplayName())
+                    .isEqualTo(TestConstants.TEST_DISPLAY_NAME);
+              });
     }
 
     @Test
-    void shouldReturnExistingUserPermissions() throws Exception {
+    void shouldUpdateProfileAndReturnExistingUserPermissions() throws Exception {
       persistUser(
           TestConstants.TEST_USER_ID,
           TestConstants.TEST_IDP_SUB,
@@ -57,9 +77,9 @@ class InternalPermissionControllerIntegrationTest extends PermissionServiceInteg
 
       mockMvc
           .perform(
-              get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
-                  .param("email", TestConstants.TEST_EMAIL)
-                  .param("displayName", TestConstants.TEST_DISPLAY_NAME))
+              postUserSync(
+                  new UserSyncRequest(
+                      TestConstants.TEST_IDP_SUB, UPDATED_EMAIL, UPDATED_DISPLAY_NAME)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.userId").value(TestConstants.TEST_USER_ID))
           .andExpect(
@@ -67,6 +87,14 @@ class InternalPermissionControllerIntegrationTest extends PermissionServiceInteg
                   "$.roles", containsInAnyOrder(TestConstants.ROLE_ADMIN, TestConstants.ROLE_USER)))
           .andExpect(jsonPath("$.permissions", hasItem(TestConstants.PERM_USERS_READ)))
           .andExpect(jsonPath("$.permissions", hasItem("views:read")));
+
+      assertThat(userRepository.findById(TestConstants.TEST_USER_ID))
+          .get()
+          .satisfies(
+              persistedUser -> {
+                assertThat(persistedUser.getEmail()).isEqualTo(UPDATED_EMAIL);
+                assertThat(persistedUser.getDisplayName()).isEqualTo(UPDATED_DISPLAY_NAME);
+              });
     }
 
     @Test
@@ -82,15 +110,58 @@ class InternalPermissionControllerIntegrationTest extends PermissionServiceInteg
 
       mockMvc
           .perform(
-              get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
-                  .param("email", TestConstants.TEST_EMAIL)
-                  .param("displayName", TestConstants.TEST_DISPLAY_NAME))
+              postUserSync(
+                  new UserSyncRequest(
+                      TestConstants.TEST_IDP_SUB, UPDATED_EMAIL, UPDATED_DISPLAY_NAME)))
           .andExpect(status().isUnprocessableContent())
           .andExpect(content().contentType(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.type").value("APPLICATION_ERROR"))
           .andExpect(jsonPath("$.message").isString())
           .andExpect(jsonPath("$.code").value("USER_DEACTIVATED"))
           .andExpect(jsonPath("$.fieldErrors").doesNotExist());
+
+      assertThat(userRepository.findById(TestConstants.TEST_USER_ID))
+          .get()
+          .satisfies(
+              persistedUser -> {
+                assertThat(persistedUser.getEmail()).isEqualTo(TestConstants.TEST_EMAIL);
+                assertThat(persistedUser.getDisplayName())
+                    .isEqualTo(TestConstants.TEST_DISPLAY_NAME);
+              });
+    }
+
+    @Test
+    void shouldReturn400WhenIdpSubIsBlank() throws Exception {
+      var userCountBeforeRequest = userRepository.count();
+
+      mockMvc
+          .perform(
+              postUserSync(
+                  new UserSyncRequest(
+                      " ", TestConstants.TEST_EMAIL, TestConstants.TEST_DISPLAY_NAME)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.type").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.fieldErrors[0].field").value("idpSub"));
+
+      assertThat(userRepository.count()).isEqualTo(userCountBeforeRequest);
+    }
+
+    @Test
+    void shouldRequireClaimsHeadersForRemovedLoginGetAndOtherSyncMethods() throws Exception {
+      mockMvc
+          .perform(
+              get("/internal/v1/users/{idpSub}/permissions", TestConstants.TEST_IDP_SUB)
+                  .param("email", TestConstants.TEST_EMAIL)
+                  .param("displayName", TestConstants.TEST_DISPLAY_NAME))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.type").value("UNAUTHORIZED"));
+
+      mockMvc
+          .perform(get("/internal/v1/users/sync"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.type").value("UNAUTHORIZED"));
+
+      assertThat(userRepository.findByIdpSubAndDeletedFalse(TestConstants.TEST_IDP_SUB)).isEmpty();
     }
   }
 
@@ -221,6 +292,12 @@ class InternalPermissionControllerIntegrationTest extends PermissionServiceInteg
               get("/internal/v1/users/{userId}/authorization/details", TestConstants.TEST_USER_ID))
           .andExpect(status().isUnauthorized());
     }
+  }
+
+  private MockHttpServletRequestBuilder postUserSync(UserSyncRequest userSyncRequest) {
+    return post("/internal/v1/users/sync")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(jsonMapper.writeValueAsString(userSyncRequest));
   }
 
   private User persistTestUser() {
