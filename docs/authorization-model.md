@@ -47,9 +47,14 @@ WHERE ur.userId = :userId
 
 Session Gateway uses two deliberately separate internal contracts:
 
-- `GET /internal/v1/users/{idpSub}/permissions` is the login-time contract. It
-  synchronizes IdP-owned profile fields, creates a missing user, and assigns the
-  default role on first login.
+- `POST /internal/v1/users/sync` is the login-time contract. It takes
+  `{ idpSub, email, displayName }` as a JSON body, synchronizes IdP-owned
+  profile fields, creates a missing user, assigns the default role on first
+  login, and returns `{ userId, roles, permissions }`. A deactivated user is
+  rejected with 422 `USER_DEACTIVATED` without updating the profile. The write
+  is a POST and every IdP field stays in the body, so the mesh can allow one
+  exact path and no personal field reaches access logs or traces through the
+  URL.
 - `GET /internal/v1/users/{userId}/authorization` is the heartbeat contract. It
   keys lookup by the canonical internal ID already stored in the Redis session
   and returns `{ userId, status, roles, permissions }` without invoking user
@@ -59,8 +64,9 @@ The heartbeat lookup returns current effective grants only for an `ACTIVE`
 account. An active account with no grants remains `ACTIVE` and returns empty
 collections. A `DEACTIVATED` account returns empty role and permission
 collections even if stale assignments remain. Missing and soft-deleted users
-return 404. The claims-header exception is scoped to the exact GET routes;
-orchestration owns mesh identity and caller restrictions.
+return 404. The claims-header exception is scoped to the exact POST sync route
+and the exact GET authorization route; orchestration owns mesh identity and
+caller restrictions.
 
 ## Deactivation and revocation retries
 
