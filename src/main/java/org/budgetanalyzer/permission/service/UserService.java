@@ -32,9 +32,9 @@ import org.budgetanalyzer.service.exception.ResourceNotFoundException;
 import org.budgetanalyzer.service.exception.ServiceUnavailableException;
 
 /**
- * Service for user management with soft delete support.
+ * Service for user administration and deactivation.
  *
- * <p>Handles user queries and soft deletion.
+ * <p>Handles user queries, role projections, and deactivation.
  */
 @Service
 @Transactional(readOnly = true)
@@ -152,22 +152,6 @@ public class UserService {
         roleIds,
         resolveUserActor(user, user.getDeactivatedBy(), userActorsById),
         resolveUserActor(user, user.getDeletedBy(), userActorsById));
-  }
-
-  /**
-   * Soft-deletes a user and removes all role assignments.
-   *
-   * @param id the user ID
-   * @param deletedBy the user ID performing the deletion
-   */
-  @Transactional
-  public void deleteUser(String id, String deletedBy) {
-    var user = getUser(id);
-
-    userRoleRepository.deleteByUserId(id);
-
-    user.markDeleted(deletedBy);
-    userRepository.save(user);
   }
 
   /**

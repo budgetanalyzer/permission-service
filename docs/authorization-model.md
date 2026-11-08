@@ -78,6 +78,15 @@ request. The API returns 200 only after revocation succeeds, including an
 idempotent success when no sessions remain. If retries are exhausted, it returns
 503 again and remains safe for the caller to retry.
 
+Deactivation is the supported account-lifecycle operation; the service has no
+runtime user-deletion surface. Soft-delete fields remain part of persistence and
+repository filtering, but they do not erase a deactivation block:
+`UserSyncService` rejects an `idp_sub` when any matching row is `DEACTIVATED`,
+including a soft-deleted row. A soft-deleted `ACTIVE` row may be recreated under
+the schema's partial unique index. Any future deletion workflow must define
+session revocation, concurrent-login handling, and re-registration semantics
+before adding an endpoint or service operation.
+
 ## The ADMIN seed bundle convention
 
 ADMIN's broad access comes from explicit seed rows, not from any special-case code:
