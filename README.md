@@ -64,6 +64,33 @@ host defaults to `localhost:5432`. If you are reusing values from
 `../orchestration/.env`, map `POSTGRES_PERMISSION_SERVICE_PASSWORD` to
 `SPRING_DATASOURCE_PASSWORD`.
 
+### Logging
+
+Application logging defaults to `INFO` for `org.budgetanalyzer`. HTTP metadata logging remains
+enabled at `DEBUG`, but request and response body capture use the safe service-common defaults and
+are disabled.
+
+The opt-in `debug-logging` Spring profile raises application logging to `TRACE` and enables HTTP
+request and response body capture. Use it only for local debugging with synthetic user and
+permission data; never use it with real identity or authorization data.
+
+```bash
+SPRING_PROFILES_ACTIVE=debug-logging ./gradlew bootRun
+```
+
+Structured state-change audit events are emitted at `INFO` on the dedicated
+`budgetanalyzer.audit` logger. Audit events contain route metadata and identifiers, not request or
+response bodies.
+
+### Health Probes
+
+Actuator liveness and readiness probe groups are enabled in every environment. Liveness contains
+only Spring's `livenessState` indicator. Readiness contains `readinessState` and `db`, because
+PostgreSQL is required to serve permission requests. Session Gateway is not a readiness dependency.
+
+- `/actuator/health/liveness` reports whether the process should be restarted.
+- `/actuator/health/readiness` reports unavailable when PostgreSQL cannot be reached.
+
 ### Test
 
 ```bash
