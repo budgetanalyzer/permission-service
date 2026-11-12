@@ -68,6 +68,12 @@ return 404. The claims-header exception is scoped to the exact POST sync route
 and the exact GET authorization route; orchestration owns mesh identity and
 caller restrictions.
 
+These two `InternalPermissionController` handlers are the only application
+handlers without `@PreAuthorize`. `RuntimeSecurityIntegrationTest` enumerates
+every handler and fails the build if any other one lacks a method- or
+class-level `@PreAuthorize`, so a new endpoint cannot fall back to plain
+authentication.
+
 ## Deactivation and revocation retries
 
 Deactivation commits the account status and role removal before calling Session
